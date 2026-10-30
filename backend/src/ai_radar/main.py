@@ -6,8 +6,10 @@ Configuration (environment variables):
   working directory).
 * ``AI_RADAR_FETCH_INTERVAL_MINUTES``: how often the stored feeds are fetched
   (default 15); ``0`` disables the scheduler.
-* ``AI_RADAR_ANALYZER``: analyzer for new articles (default and currently only
-  value ``fake``; no paid API is called without explicit configuration, D5).
+* ``AI_RADAR_ANALYZER``: analyzer for new articles, ``fake`` (default) or
+  ``openai``. ``openai`` makes paid calls and also needs ``OPENAI_API_KEY``,
+  ``AI_RADAR_OPENAI_MODEL``, the prices per 1M tokens, and a monthly budget
+  greater than 0 (see ``ai_radar.analysis.openai``, D5).
 * ``AI_RADAR_ANALYSIS_MAX_ATTEMPTS`` (default 3) and
   ``AI_RADAR_ANALYSIS_CONCURRENCY`` (default 2).
 
@@ -51,8 +53,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Prepare the database, then run the feed scheduler until shutdown."""
     interval = fetch_interval_seconds(os.environ.get(FETCH_INTERVAL_ENV))
     analysis = AnalysisSettings.from_env(os.environ)
-    analyzer = analysis.create_analyzer()
     db_path = Path(os.environ.get(DB_PATH_ENV, DEFAULT_DB_PATH))
+    analyzer = analysis.create_analyzer(db_path)
     with open_database(db_path) as conn:  # create or migrate the schema once
         # Analysis only runs in this process; nothing is in progress yet.
         ArticleRepository(conn).reset_interrupted()

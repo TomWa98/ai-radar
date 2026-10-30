@@ -24,6 +24,14 @@ class AnalysisError(Exception):
     """
 
 
+class BudgetExceededError(AnalysisError):
+    """The monthly budget for paid analyzer calls is used up (D5).
+
+    The article is marked failed without using up one of its attempts, so it
+    is analyzed once budget is available again.
+    """
+
+
 class Analyzer(Protocol):
     def analyze(self, item: AnalysisInput) -> AnalysisResult:
         """Analyze one article; raise on failure, never return partial results."""
