@@ -37,7 +37,56 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Aktuell werden Dokumentation, Entwicklungsumgebung und der kontrollierte Claude-Code-Workflow vorbereitet. Start- und Installationsbefehle ergänzen wir, sobald die ersten Komponenten tatsächlich lauffähig sind.
+Ein minimales FastAPI-Backend mit Health-Check (`GET /health`) ist vorhanden. Feed-Abruf, KI-Analyse, Datenbank und Frontend sind noch nicht implementiert.
+
+## Backend lokal starten
+
+Voraussetzung: Python ≥ 3.12. Alle Befehle im Projektverzeichnis ausführen.
+
+```bash
+# Virtuelle Umgebung anlegen (einmalig, falls noch nicht vorhanden)
+python3 -m venv .venv
+
+# Backend inklusive Test-Abhängigkeiten installieren (editable)
+.venv/bin/pip install -e "backend[dev]"
+
+# Server starten (http://127.0.0.1:8000)
+cd backend && ../.venv/bin/uvicorn ai_radar.main:app --reload
+
+# In einem zweiten Terminal prüfen
+curl http://127.0.0.1:8000/health   # → {"status":"ok"}
+```
+
+Die interaktive API-Dokumentation ist unter http://127.0.0.1:8000/docs erreichbar.
+
+## Tests ausführen
+
+```bash
+.venv/bin/pytest backend
+```
+
+## Continuous Integration
+
+Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei Pull Requests gegen `main` und bei Pushes auf `main`. Jeder Befund lässt die Pipeline fehlschlagen.
+
+| Job | Prüfung |
+|---|---|
+| Backend (Python 3.12 und 3.14) | Ruff-Linting (`E`, `F`, `I`, `B`) und pytest |
+| Backend (nur Python 3.14) | `pip-audit`: bekannte Schwachstellen in installierten Python-Paketen |
+| Gitleaks | Secret-Scan über die gesamte Git-Historie |
+| Semgrep | Statische Sicherheitsanalyse von `backend/` mit dem öffentlichen Regelsatz `p/python`, ohne Semgrep-Account |
+
+Der Workflow hat nur Leserechte (`contents: read`). Actions sind auf Commit-SHAs, Docker-Images auf Digests gepinnt.
+
+Lokal ausführen (aus dem Projektverzeichnis):
+
+```bash
+cd backend
+../.venv/bin/ruff check .
+../.venv/bin/pytest
+../.venv/bin/pip-audit --skip-editable
+cd .. && gitleaks git .            # erfordert eine lokale Gitleaks-Installation
+```
 
 ## Geplanter Entwicklungsansatz
 
