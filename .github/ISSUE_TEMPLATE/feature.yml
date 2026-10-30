@@ -42,11 +42,18 @@ body:
         - Keine neuen Abhängigkeiten
     validations:
       required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Abhängigkeiten
+      description: Issues, die vorher geschlossen sein müssen (z. B. "#7, #9"), oder "Keine".
+    validations:
+      required: true
   - type: dropdown
     id: architecture
     attributes:
       label: Architektur/Abhängigkeiten betroffen
-      description: Bei "Ja" ist eine Entscheidung nötig; das Issue ist dann nicht agent-ready.
+      description: Bei "Ja" die Entscheidungs-IDs aus docs/architecture.md §8 nennen; fehlt die Entscheidung dort, ist das Issue nicht agent-ready.
       options:
         - Nein
         - Ja
