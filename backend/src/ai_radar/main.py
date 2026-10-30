@@ -30,6 +30,7 @@ from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from ai_radar.analysis.pipeline import AnalysisSettings
+from ai_radar.articles.api import router as articles_router
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import open_database
 from ai_radar.feedback.api import router as feedback_router
@@ -88,6 +89,7 @@ app.include_router(refresh_router)
 app.include_router(interests_router)
 app.include_router(feedback_router)
 app.include_router(preferences_router)
+app.include_router(articles_router)
 
 
 @app.get("/health")

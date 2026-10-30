@@ -180,10 +180,11 @@ def analyze_pending(
                         article.id,
                         message,
                         count_attempt=not isinstance(exc, BudgetExceededError),
+                        finished_at=clock(),
                     )
                     failed += 1
                 else:
-                    articles.mark_analyzed(article.id)
+                    articles.mark_analyzed(article.id, finished_at=clock())
                     analyzed += 1
     if analyzed or failed:
         logger.info("Analysis pass: %d analyzed, %d failed", analyzed, failed)
