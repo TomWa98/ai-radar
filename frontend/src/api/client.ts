@@ -87,12 +87,12 @@ export async function apiGet(path: string, options: GetOptions = {}): Promise<un
 }
 
 /**
- * PUT or DELETE a resource, with an optional JSON `body`. Returns the JSON
+ * POST, PUT, PATCH, or DELETE a resource, with an optional JSON `body`. Returns the JSON
  * response, or `null` for `204 No Content`; throws {@link ApiError} for
  * every failure.
  */
 export async function apiSend(
-  method: "PUT" | "DELETE",
+  method: "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<unknown> {

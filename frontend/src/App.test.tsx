@@ -19,6 +19,7 @@ function backendStatus(): string {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   window.location.hash = "";
 });
 
@@ -34,7 +35,7 @@ describe("App shell", () => {
     await screen.findByText("Backend reachable");
   });
 
-  it("links Overview, disables the other destinations, and hides Articles", async () => {
+  it("links Overview and Interests, disables the others, and hides Articles", async () => {
     stubApi();
     render(<App />);
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
@@ -42,12 +43,39 @@ describe("App shell", () => {
     const overview = within(nav).getByRole("link", { name: "Overview" });
     expect(overview.getAttribute("href")).toBe("#/overview");
     expect(overview.getAttribute("aria-current")).toBe("page");
-    for (const label of ["Interests", "Sources", "News Wall"]) {
+    const interests = within(nav).getByRole("link", { name: "Interests" });
+    expect(interests.getAttribute("href")).toBe("#/interests");
+    for (const label of ["Sources", "News Wall"]) {
       const item = within(nav).getByText(label).closest("[aria-disabled]");
       expect(item?.getAttribute("aria-disabled")).toBe("true");
     }
-    expect(within(nav).getAllByRole("link")).toHaveLength(1);
+    expect(within(nav).getAllByRole("link")).toHaveLength(2);
     expect(within(nav).queryByText("Articles")).toBeNull();
+    await screen.findByText("Backend reachable");
+  });
+});
+
+describe("Interests route", () => {
+  it("shows the Interests & personalization area at #/interests", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    window.location.hash = "#/interests";
+    stubApi((url) =>
+      url.pathname === "/api/interests"
+        ? json([])
+        : url.pathname === "/api/preferences"
+          ? json({ learned: [], last_reset_at: null })
+          : undefined,
+    );
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Interests & personalization",
+    );
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(within(nav).getByRole("link", { name: "Interests" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    expect(await screen.findByText("No manual interests yet. Add a topic above.")).toBeTruthy();
     await screen.findByText("Backend reachable");
   });
 });

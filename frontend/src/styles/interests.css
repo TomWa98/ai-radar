@@ -1,0 +1,215 @@
+/* Interests & personalization. Buttons, controls, and .visually-hidden come
+   from overview.css. */
+
+.interests__header {
+  margin-bottom: var(--space-5);
+}
+
+.interests__intro {
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
+
+/* Manual interests and learned preferences side by side on wide screens,
+   stacked otherwise. */
+.interests__sections {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 1200px) {
+  .interests__sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  min-width: 0;
+}
+
+.panel__title {
+  font-size: var(--font-size-lg);
+  margin: 0;
+}
+
+.panel__title:focus {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.panel__title:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.panel__intro,
+.panel__meta,
+.panel__detail {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Live region; takes no space while empty. */
+.panel__notice {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.panel__notice:empty {
+  display: none;
+}
+
+.panel__message {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+}
+
+.panel__message p {
+  margin: 0 0 var(--space-3);
+}
+
+.panel__message--error {
+  border-color: var(--color-border-interactive);
+  color: var(--color-text-primary);
+}
+
+.interest-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+}
+
+.interest-form__field label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.interest-form__topic {
+  flex: 1 1 220px;
+}
+
+.interest-form__topic .control {
+  width: 100%;
+}
+
+.interest-form .control[aria-invalid="true"] {
+  border-width: 2px;
+  border-color: var(--color-text-primary);
+}
+
+.interest-form__error {
+  flex-basis: 100%;
+  font-size: var(--font-size-sm);
+}
+
+.interest-form__error p {
+  margin: 0;
+}
+
+.interest-list,
+.learned-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.interest-item,
+.learned-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.interest-item:first-child,
+.learned-item:first-child {
+  border-top: 0;
+}
+
+.interest-item__topic,
+.learned-item__topic {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-weight-semibold);
+}
+
+.interest-item__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.interest-item .control[aria-disabled="true"],
+.interest-item .button[aria-disabled="true"],
+.interest-form .button[aria-disabled="true"],
+.confirm .button[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.interest-item__state,
+.interest-item__error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.interest-item__state:empty {
+  display: none;
+}
+
+.interest-item__error {
+  color: var(--color-text-primary);
+}
+
+.learned-item__score {
+  font-variant-numeric: tabular-nums;
+}
+
+.learned-item__reason {
+  flex-basis: 100%;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.confirm {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.confirm__text {
+  margin: 0 0 var(--space-3);
+}
+
+.confirm__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.panel > .button {
+  align-self: flex-start;
+}
