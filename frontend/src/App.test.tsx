@@ -1,27 +1,21 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { LanguageProvider } from "./i18n/language";
 import { AppShell } from "./shell/AppShell";
 import type { NavItem } from "./shell/navigation";
+import { json, stubApi } from "./test/fetch";
 
 function withLanguage(ui: ReactNode) {
   return <LanguageProvider>{ui}</LanguageProvider>;
 }
 
-function stubHealth(response: () => Promise<Response>) {
-  vi.stubGlobal("fetch", vi.fn(response));
+/** The backend status shown in the top bar. */
+function backendStatus(): string {
+  return within(screen.getByRole("banner")).getByRole("status").textContent ?? "";
 }
-
-const healthy = () =>
-  Promise.resolve(
-    new Response(JSON.stringify({ status: "ok" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -30,28 +24,29 @@ afterEach(() => {
 
 describe("App shell", () => {
   it("has the top bar, labelled navigation, and main landmarks", async () => {
-    stubHealth(healthy);
+    stubApi();
     render(<App />);
 
     expect(screen.getByRole("banner").textContent).toContain("AI Radar");
     expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeTruthy();
     expect(screen.getByRole("main")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "No view available yet",
-    );
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Overview");
     await screen.findByText("Backend reachable");
   });
 
-  it("shows unimplemented destinations as disabled and hides Articles", async () => {
-    stubHealth(healthy);
+  it("links Overview, disables the other destinations, and hides Articles", async () => {
+    stubApi();
     render(<App />);
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
 
-    for (const label of ["Overview", "Interests", "Sources", "News Wall"]) {
+    const overview = within(nav).getByRole("link", { name: "Overview" });
+    expect(overview.getAttribute("href")).toBe("#/overview");
+    expect(overview.getAttribute("aria-current")).toBe("page");
+    for (const label of ["Interests", "Sources", "News Wall"]) {
       const item = within(nav).getByText(label).closest("[aria-disabled]");
       expect(item?.getAttribute("aria-disabled")).toBe("true");
     }
-    expect(within(nav).queryAllByRole("link")).toHaveLength(0);
+    expect(within(nav).getAllByRole("link")).toHaveLength(1);
     expect(within(nav).queryByText("Articles")).toBeNull();
     await screen.findByText("Backend reachable");
   });
@@ -59,31 +54,28 @@ describe("App shell", () => {
 
 describe("backend status", () => {
   it("reports a check in progress, then success", async () => {
-    stubHealth(healthy);
+    stubApi();
     render(<App />);
 
-    expect(screen.getByRole("status").textContent).toBe("Checking backend…");
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toBe("Backend reachable"),
-    );
+    expect(backendStatus()).toBe("Checking backend…");
+    await waitFor(() => expect(backendStatus()).toBe("Backend reachable"));
   });
 
   it("reports an unreachable backend", async () => {
-    stubHealth(() => Promise.reject(new TypeError("Failed to fetch")));
+    stubApi((url) => {
+      if (url.pathname === "/health") throw new TypeError("Failed to fetch");
+      return undefined;
+    });
     render(<App />);
 
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toBe("Backend unreachable"),
-    );
+    await waitFor(() => expect(backendStatus()).toBe("Backend unreachable"));
   });
 
   it("reports an error response as unreachable", async () => {
-    stubHealth(() => Promise.resolve(new Response("", { status: 503 })));
+    stubApi((url) => (url.pathname === "/health" ? json({}, 503) : undefined));
     render(<App />);
 
-    await waitFor(() =>
-      expect(screen.getByRole("status").textContent).toBe("Backend unreachable"),
-    );
+    await waitFor(() => expect(backendStatus()).toBe("Backend unreachable"));
   });
 });
 
@@ -95,7 +87,7 @@ describe("keyboard and focus", () => {
   ];
 
   it("starts with a skip link that moves focus to the main area", async () => {
-    stubHealth(healthy);
+    stubApi();
     const user = userEvent.setup();
     render(<App />);
 
@@ -109,7 +101,7 @@ describe("keyboard and focus", () => {
   });
 
   it("skip link focuses the main area without changing the view", async () => {
-    stubHealth(healthy);
+    stubApi();
     const user = userEvent.setup();
     window.location.hash = "#/interests";
     render(withLanguage(<AppShell items={ITEMS} current="interests" />));
@@ -123,7 +115,7 @@ describe("keyboard and focus", () => {
   });
 
   it("reaches available destinations by Tab and skips disabled ones", async () => {
-    stubHealth(healthy);
+    stubApi();
     const user = userEvent.setup();
     render(withLanguage(<AppShell items={ITEMS} current="interests" />));
 
@@ -145,7 +137,7 @@ describe("keyboard and focus", () => {
   });
 
   it("follows the URL hash", async () => {
-    stubHealth(healthy);
+    stubApi();
     const user = userEvent.setup();
     const { rerender } = render(withLanguage(<AppShell items={ITEMS} current="overview" />));
 

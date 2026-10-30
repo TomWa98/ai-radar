@@ -39,7 +39,7 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess mit anschließender Analyse (derzeit mit dem FakeAnalyzer) und ein manuell gestarteter Abruf per CLI. Das Frontend unter `frontend/` besteht bisher aus dem Grundgerüst (App-Shell mit Navigation und Backend-Status); die fachlichen Ansichten folgen.
+Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess mit anschließender Analyse (derzeit mit dem FakeAnalyzer) und ein manuell gestarteter Abruf per CLI. Das Frontend unter `frontend/` hat eine App-Shell mit Navigation, Backend-Status und DE/EN-Umschaltung sowie die Ansicht „Übersicht“ (Editorial Grid mit Suche, Filtern, Sortierung, Seiten und Aktualisierung mindestens alle 60 Sekunden); weitere Ansichten folgen.
 
 ## Backend lokal starten
 

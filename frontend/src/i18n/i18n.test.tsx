@@ -17,7 +17,9 @@ function stubFetch(): Calls {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       calls.push({ url: String(input), method: init?.method ?? "GET" });
-      const body = String(input).startsWith("/health") ? { status: "ok" } : { items: [] };
+      const body = String(input).startsWith("/health")
+        ? { status: "ok" }
+        : { items: [], total: 0, limit: 25, offset: 0, next_since: "2026-10-30T12:00:00Z" };
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -103,17 +105,15 @@ describe("language switch", () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(screen.getByText("Overview")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Overview");
     expect(document.documentElement.lang).toBe("en");
     const deutsch = screen.getByRole("button", { name: "DE – Deutsch" });
     expect(deutsch.getAttribute("aria-pressed")).toBe("false");
 
     await user.click(deutsch);
 
-    expect(screen.getByText("Übersicht")).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "Noch keine Ansicht verfügbar",
-    );
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Übersicht");
+    expect(screen.getByRole("link", { name: "Übersicht" })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Hauptnavigation" })).toBeTruthy();
     expect(screen.getByRole("group", { name: "Sprache" })).toBeTruthy();
     expect(deutsch.getAttribute("aria-pressed")).toBe("true");
@@ -128,7 +128,7 @@ describe("language switch", () => {
     stubFetch();
     render(<App />);
 
-    expect(screen.getByText("Übersicht")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Übersicht");
     await screen.findByText("Backend erreichbar");
   });
 
