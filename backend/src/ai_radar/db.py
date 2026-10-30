@@ -174,6 +174,41 @@ CREATE TABLE preference_resets (
 )
 """
 
+# Full-text search over title, feed excerpt, and extracted text (D7, FR-20).
+# External-content FTS5 index: filled once for existing articles, then kept
+# current by triggers. Status updates do not touch the index.
+_V11_ARTICLE_SEARCH: Migration = (
+    """
+    CREATE VIRTUAL TABLE articles_fts USING fts5(
+        title, content, full_text,
+        content = 'articles', content_rowid = 'id',
+        tokenize = 'unicode61 remove_diacritics 2'
+    )
+    """,
+    "INSERT INTO articles_fts (articles_fts) VALUES ('rebuild')",
+    """
+    CREATE TRIGGER articles_fts_insert AFTER INSERT ON articles BEGIN
+        INSERT INTO articles_fts (rowid, title, content, full_text)
+        VALUES (new.id, new.title, new.content, new.full_text);
+    END
+    """,
+    """
+    CREATE TRIGGER articles_fts_delete AFTER DELETE ON articles BEGIN
+        INSERT INTO articles_fts (articles_fts, rowid, title, content, full_text)
+        VALUES ('delete', old.id, old.title, old.content, old.full_text);
+    END
+    """,
+    """
+    CREATE TRIGGER articles_fts_update
+    AFTER UPDATE OF title, content, full_text ON articles BEGIN
+        INSERT INTO articles_fts (articles_fts, rowid, title, content, full_text)
+        VALUES ('delete', old.id, old.title, old.content, old.full_text);
+        INSERT INTO articles_fts (rowid, title, content, full_text)
+        VALUES (new.id, new.title, new.content, new.full_text);
+    END
+    """,
+)
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
@@ -185,6 +220,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     (_V8_INTERESTS,),
     (_V9_FEEDBACK,),
     (_V10_PREFERENCE_RESETS,),
+    _V11_ARTICLE_SEARCH,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
@@ -224,6 +260,21 @@ def fetch_one(
         return cursor.fetchone()
 
 
+_FTS5_PROBE = "CREATE VIRTUAL TABLE temp.fts5_probe USING fts5(x)"
+
+
+def require_fts5(conn: sqlite3.Connection) -> None:
+    """Raise ``RuntimeError`` if this SQLite build lacks FTS5 (needed, D7)."""
+    try:
+        conn.execute(_FTS5_PROBE)
+    except sqlite3.OperationalError as exc:
+        raise RuntimeError(
+            "SQLite FTS5 is not available, but AI Radar needs it for full-text "
+            "search (D7). Use a Python build whose SQLite includes FTS5."
+        ) from exc
+    conn.execute("DROP TABLE temp.fts5_probe")
+
+
 def init_schema(
     conn: sqlite3.Connection, migrations: Sequence[Migration] = MIGRATIONS
 ) -> None:
@@ -233,7 +284,10 @@ def init_schema(
     update, so a failing migration leaves the previous version intact. The
     version is read inside that transaction, so two processes starting at the
     same time cannot both apply the same migration.
+
+    Fails with a clear ``RuntimeError`` if SQLite lacks FTS5.
     """
+    require_fts5(conn)
     latest = len(migrations)
     while True:
         with transaction(conn):

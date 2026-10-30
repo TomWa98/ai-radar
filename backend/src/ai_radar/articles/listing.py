@@ -9,10 +9,15 @@ not match category or relevance filters.
 
 ``changed_at`` is the latest of collection, analysis, analysis attempt, and
 feedback; ``since`` returns only articles changed after it, for polling.
+
+Search (D7) uses the FTS5 index over title, excerpt, and extracted text. The
+user's text never becomes FTS query syntax: every whitespace-separated term is
+passed as a quoted phrase, and all terms must match.
 """
 
 import json
 import sqlite3
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -24,6 +29,8 @@ from ai_radar.feedback.repository import Rating
 
 Language = Literal["de", "en"]
 MAX_PAGE_SIZE = 100
+MAX_SEARCH_LENGTH = 200
+MAX_SEARCH_TERMS = 20
 
 
 class SortOrder(StrEnum):
@@ -34,6 +41,7 @@ class SortOrder(StrEnum):
 @dataclass(frozen=True, slots=True)
 class ArticleQuery:
     lang: Language = "de"
+    search: str | None = None  # free text; blank means no search
     category: Category | None = None
     min_relevance: int | None = None
     published_from: datetime | None = None
@@ -105,7 +113,9 @@ items AS (
 )
 SELECT items.*, COUNT(*) OVER () AS total
 FROM items
-WHERE (:category IS NULL
+WHERE (:fts IS NULL
+       OR id IN (SELECT rowid FROM articles_fts WHERE articles_fts MATCH :fts))
+  AND (:category IS NULL
        OR primary_category = :category
        OR EXISTS (SELECT 1 FROM json_each(items.secondary_categories)
                   WHERE value = :category))
@@ -119,6 +129,27 @@ ORDER BY CASE WHEN :sort = 'relevance' THEN relevance IS NULL ELSE 0 END,
          id DESC
 LIMIT :limit OFFSET :offset
 """
+
+
+def to_fts_query(text: str | None) -> str | None:
+    """Turn free text into a safe FTS5 query, or ``None`` for blank text.
+
+    Each term becomes a quoted phrase (inner quotes doubled), so operators,
+    column filters, and other FTS syntax in the input are plain text. Control
+    characters (e.g. NUL, which ends an FTS5 query) are treated as spaces.
+    Raises ``ValueError`` for overlong input or too many terms.
+    """
+    if text is None:
+        return None
+    if len(text) > MAX_SEARCH_LENGTH:
+        raise ValueError(f"search must be at most {MAX_SEARCH_LENGTH} characters")
+    text = "".join(" " if unicodedata.category(c) == "Cc" else c for c in text)
+    terms = text.split()
+    if len(terms) > MAX_SEARCH_TERMS:
+        raise ValueError(f"search must have at most {MAX_SEARCH_TERMS} terms")
+    if not terms:
+        return None
+    return " ".join('"' + term.replace('"', '""') + '"' for term in terms)
 
 
 def _to_db(value: datetime | None) -> str | None:
@@ -168,6 +199,7 @@ def list_articles(conn: sqlite3.Connection, query: ArticleQuery) -> ArticlePage:
         raise ValueError(f"limit must be between 1 and {MAX_PAGE_SIZE}")
     params = {
         "lang": query.lang,
+        "fts": to_fts_query(query.search),
         "category": None if query.category is None else str(query.category),
         "min_relevance": query.min_relevance,
         "published_from": _to_db(query.published_from),
