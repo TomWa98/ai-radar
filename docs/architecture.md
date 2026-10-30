@@ -51,6 +51,7 @@ Die Darstellung ist logisch: Module müssen nicht jeweils eigene Prozesse sein. 
 | Frontend | React + TypeScript + Vite | Interaktives Dashboard ohne unnötiges SSR |
 | Persistenz | SQLite | Lokale, dateibasierte relationale Datenbank; kein separater DB-Server |
 | Datenbankzugriff | Python-Standardmodul `sqlite3`, kein ORM; Schemaversion über `PRAGMA user_version` | Keine zusätzliche Abhängigkeit, transparentes SQL; Zugriff gekapselt in Repository-Klassen, damit ein späterer Wechsel (z. B. SQLAlchemy/Alembic) lokal bleibt |
+| Feed-Abruf und -Parsing | `httpx` (HTTP-Abruf, eigener Redirect-Umgang) und `feedparser` (RSS/Atom) | Etablierte Bibliotheken; `feedparser` toleriert fehlerhafte Feeds, `httpx` erlaubt Timeouts, Streaming mit Größenlimit und die Prüfung jedes Redirect-Ziels |
 | KI-Analyse | Externe LLM-API, zunächst OpenAI | Modellqualität ohne lokale Inferenz-Infrastruktur |
 | KI-Abstraktion | Austauschbare Analyzer-Schnittstelle | Anbieterwechsel und Tests ohne echte API-Aufrufe |
 | Hintergrundjobs | Einfacher Python-Scheduler, begrenzte Parallelität | Keine Redis-/Celery-Infrastruktur im MVP |
@@ -58,7 +59,7 @@ Die Darstellung ist logisch: Module müssen nicht jeweils eigene Prozesse sein. 
 | Deployment | Ubuntu, perspektivisch Docker Compose | Reproduzierbarer Betrieb |
 | Zugriff | Single-User, lokal / Heimnetz | Kein öffentliches Hosting im MVP |
 
-Bibliotheken für Feed-Parsing, HTTP-Abruf, Extraktion, ORM/Migrationen, Scheduling und Frontend-Routing werden bei Bedarf konkret ausgewählt. Es werden hier keine Versionsnummern festgeschrieben.
+Bibliotheken für Volltextextraktion, ORM/Migrationen, Scheduling und Frontend-Routing werden bei Bedarf konkret ausgewählt. Es werden hier keine Versionsnummern festgeschrieben.
 
 ## 4. Verantwortlichkeiten der Komponenten
 
@@ -137,6 +138,8 @@ Bibliotheken für Feed-Parsing, HTTP-Abruf, Extraktion, ORM/Migrationen, Schedul
 
 - API-Schlüssel nur serverseitig über Umgebungsvariablen / nicht eingecheckte Konfiguration; niemals im Frontend oder Repository.
 - Externe Feed-Inhalte und LLM-Ausgaben gelten als nicht vertrauenswürdig. Eingaben validieren, HTML sicher darstellen und Abrufziele begrenzen (insbesondere SSRF-Risiko).
+- Feed-Abruf (SSRF-Schutz): nur `http`/`https` ohne eingebettete Zugangsdaten; der Hostname wird aufgelöst und nur abgerufen, wenn alle Adressen öffentlich sind. Redirects folgt der Client nicht selbst: jedes Ziel wird erneut geprüft, höchstens 5 Redirects. Timeouts, Gesamtfrist und maximale Antwortgröße (nach Dekomprimierung) sind begrenzt; Proxy- und `.netrc`-Einstellungen aus der Umgebung werden ignoriert. Es werden keine Cookies oder Zugangsdaten gesendet und keine Paywalls umgangen.
+- Bekanntes Restrisiko DNS-Rebinding: `httpx` löst den Hostnamen beim Verbindungsaufbau erneut auf. Ein Angreifer, der das DNS eines Feeds kontrolliert, kann zwischen Prüfung und Verbindung eine interne Adresse liefern. Abhilfe (z. B. Verbindung zur geprüften IP oder Egress-Filter auf Netzwerkebene) ist für den Betrieb außerhalb des lokalen MVP vorzusehen.
 - Für Heimnetzzugriff ist ein geeignetes Zugriffsschutzkonzept erforderlich; Single-User bedeutet nicht automatisch, dass jede Person im LAN administrative Endpunkte nutzen darf.
 - Wiederholbare Tests ohne kostenpflichtige LLM-Aufrufe mithilfe eines FakeAnalyzer.
 - Automatisierte Prüfungen für Codequalität, Abhängigkeiten und Secrets sind für den Entwicklungsworkflow vorgesehen; konkrete Tools und CI-Konfiguration folgen später.
@@ -146,7 +149,7 @@ Bibliotheken für Feed-Parsing, HTTP-Abruf, Extraktion, ORM/Migrationen, Schedul
 
 - Konkrete Python-/Node-Versionen und Paketmanager.
 - Vollständiges Datenbankschema und Migrationsablauf über Version 1 hinaus.
-- Feed-/Volltextextraktionsbibliotheken.
+- Volltextextraktionsbibliothek.
 - Scheduler-Bibliothek, Queue-Mechanik und Prozessmodell.
 - LLM-Modell, Prompt-Design, exakte Token-/Kostenlimits.
 - Konkrete API-Endpunkte, UI-Routing und Authentisierung im Heimnetz.

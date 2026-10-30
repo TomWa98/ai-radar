@@ -38,7 +38,7 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Ein minimales FastAPI-Backend mit Health-Check (`GET /health`) ist vorhanden. Feed-Abruf, KI-Analyse, Datenbank und Frontend sind noch nicht implementiert.
+Vorhanden sind ein minimales FastAPI-Backend mit Health-Check (`GET /health`), SQLite-Artikelspeicherung mit Deduplizierung und ein manuell gestarteter RSS-/Atom-Abruf per CLI. Scheduler, KI-Analyse und Frontend sind noch nicht implementiert.
 
 ## Backend lokal starten
 
@@ -59,6 +59,16 @@ curl http://127.0.0.1:8000/health   # → {"status":"ok"}
 ```
 
 Die interaktive API-Dokumentation ist unter http://127.0.0.1:8000/docs erreichbar.
+
+## Feeds abrufen
+
+```bash
+# Feed-URLs als Argumente und/oder aus einer Datei (eine URL pro Zeile, # für Kommentare)
+.venv/bin/python -m ai_radar.ingest --db ai-radar.db https://example.com/feed.xml
+.venv/bin/python -m ai_radar.ingest --db ai-radar.db --feeds-file feeds.txt
+```
+
+Abgerufen werden nur öffentliche `http`/`https`-Adressen (SSRF-Schutz, siehe [Architektur](docs/architecture.md)). Fehlerhafte Feeds werden gemeldet, ohne die übrigen zu blockieren; der Exit-Code ist dann `1`.
 
 ## Tests ausführen
 
