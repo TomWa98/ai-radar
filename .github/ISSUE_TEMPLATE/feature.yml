@@ -1,0 +1,68 @@
+name: Feature
+description: Neue Funktion oder Erweiterung mit prüfbaren Akzeptanzkriterien
+title: "feat: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ein Issue wird erst nach menschlicher Prüfung mit `agent-ready` markiert.
+        Erst dann darf `/autonomous-feature` es bearbeiten. Siehe `docs/agentic-workflow.md`.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Ziel
+      description: Welches Problem wird gelöst, welches beobachtbare Verhalten entsteht?
+    validations:
+      required: true
+  - type: input
+    id: requirements
+    attributes:
+      label: Anforderungen
+      description: IDs aus docs/requirements.md
+      placeholder: "FR-01, FR-05"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Akzeptanzkriterien
+      description: Jedes Kriterium muss durch einen automatisierten Test oder einen konkreten Befehl prüfbar sein.
+      placeholder: |
+        - [ ] Gegeben …, wenn …, dann …
+        - [ ] Fehlerfall: …
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Nicht im Umfang
+      placeholder: |
+        - Kein Frontend
+        - Keine neuen Abhängigkeiten
+    validations:
+      required: true
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Architektur/Abhängigkeiten betroffen
+      description: Bei "Ja" ist eine Entscheidung nötig; das Issue ist dann nicht agent-ready.
+      options:
+        - Nein
+        - Ja
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Sicherheits- und Datenaspekte
+      description: Untrusted Input, Netzwerkzugriffe (SSRF), Secrets, Persistenz/Datenverlust, Kosten. "Keine" ist eine gültige Antwort.
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: Testhinweise
+      description: Erwartete Tests, Testdaten, zu mockende externe Dienste
+    validations:
+      required: false

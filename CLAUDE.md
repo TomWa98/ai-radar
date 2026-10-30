@@ -36,6 +36,7 @@ Explain unfamiliar Python/TypeScript syntax and concepts concisely when asked. K
 ## Git and review
 - Prefer a dedicated feature branch for implementation work and a pull request for review.
 - Do not merge, push, publish, deploy, or create releases without explicit user authorization.
+- Exception: an explicit `/autonomous-feature` invocation authorizes, for exactly one `agent-ready` issue, creating a feature branch, committing, pushing that branch, and opening one pull request (see `docs/agentic-workflow.md`). It never authorizes merging, changes on `main`, or starting another issue.
 - Do not rewrite Git history, force-push, or discard user changes.
 - CI should eventually run on pull requests: tests, lint/type checks, dependency audits, secret scanning, and security checks. **Never assert CI exists or passed unless verified.**
 - AI-assisted code review does not replace automated checks or human review.
