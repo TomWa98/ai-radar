@@ -8,7 +8,16 @@ import pytest
 
 from ai_radar.articles.models import NewArticle
 from ai_radar.articles.repository import ArticleRepository
-from ai_radar.db import SCHEMA_VERSION, connect, fetch_one, open_database, transaction
+from ai_radar.db import (
+    MIGRATIONS,
+    SCHEMA_VERSION,
+    Migration,
+    connect,
+    fetch_one,
+    init_schema,
+    open_database,
+    transaction,
+)
 
 # Short lock timeout: a lock leak fails the test quickly instead of hanging.
 FAST_TIMEOUT = 0.2
@@ -38,6 +47,26 @@ def schema_version(path: Path) -> int:
     return row[0]
 
 
+# Test-only migration on top of the real ones. CREATE TABLE without IF NOT EXISTS
+# fails if it is ever applied twice.
+V2_FEEDS: Migration = (
+    "CREATE TABLE test_feeds (id INTEGER PRIMARY KEY, url TEXT NOT NULL)",
+    "ALTER TABLE articles ADD COLUMN test_feed_id INTEGER",
+)
+WITH_V2 = (*MIGRATIONS, V2_FEEDS)
+
+
+def table_names(path: Path) -> set[str]:
+    with closing(connect(path)) as conn:
+        rows = conn.execute("SELECT name FROM sqlite_schema WHERE type = 'table'")
+        return {row[0] for row in rows.fetchall()}
+
+
+def migrate(path: Path, migrations: tuple[Migration, ...]) -> None:
+    with closing(connect(path, timeout=5.0)) as conn:
+        init_schema(conn, migrations)
+
+
 def test_read_does_not_block_writer_on_other_connection(tmp_path: Path) -> None:
     path = tmp_path / "test.db"
     with (
@@ -49,7 +78,9 @@ def test_read_does_not_block_writer_on_other_connection(tmp_path: Path) -> None:
         assert reader.get_by_url("https://example.com/a") is None
         assert not reader_conn.in_transaction
 
-        stored = ArticleRepository(writer_conn).add(make_article("https://example.com/a"))
+        stored = ArticleRepository(writer_conn).add(
+            make_article("https://example.com/a")
+        )
 
         assert stored is not None
 
@@ -155,3 +186,82 @@ def test_transaction_rolls_back_on_error(tmp_path: Path) -> None:
 
         assert not conn.in_transaction
         assert count_articles(conn) == 0
+
+
+def test_migrations_are_numbered_by_position() -> None:
+    assert SCHEMA_VERSION == len(MIGRATIONS) >= 1
+
+
+def test_empty_database_is_migrated_to_latest(tmp_path: Path) -> None:
+    path = tmp_path / "test.db"
+
+    migrate(path, WITH_V2)
+
+    assert schema_version(path) == 2
+    assert {"articles", "test_feeds"} <= table_names(path)
+
+
+def test_populated_v1_database_is_migrated_without_losing_articles(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "test.db"
+    with open_database(path) as conn:
+        assert schema_version(path) == 1
+        repository = ArticleRepository(conn)
+        first = repository.add(make_article("https://example.com/a"))
+        second = repository.add(make_article("https://example.com/b"))
+
+    migrate(path, WITH_V2)
+
+    assert schema_version(path) == 2
+    with closing(connect(path)) as conn:
+        repository = ArticleRepository(conn)
+        assert first is not None and repository.get_by_id(first.id) == first
+        assert second is not None and repository.get_by_id(second.id) == second
+        row = fetch_one(conn, "SELECT test_feed_id FROM articles LIMIT 1")
+        assert row is not None and row[0] is None
+
+
+def test_failing_migration_keeps_previous_version(tmp_path: Path) -> None:
+    path = tmp_path / "test.db"
+    with open_database(path) as conn:
+        ArticleRepository(conn).add(make_article("https://example.com/a"))
+    broken: Migration = (
+        "CREATE TABLE half_done (id INTEGER)",
+        "ALTER TABLE no_such_table ADD COLUMN x INTEGER",
+    )
+
+    with closing(connect(path)) as conn:
+        with pytest.raises(sqlite3.OperationalError):
+            init_schema(conn, (*WITH_V2, broken))
+        assert not conn.in_transaction
+
+    assert schema_version(path) == 2  # v2 committed, v3 rolled back entirely
+    assert "half_done" not in table_names(path)
+    with closing(connect(path)) as conn:
+        assert count_articles(conn) == 1
+
+
+def test_concurrent_migration_applies_each_migration_once(tmp_path: Path) -> None:
+    path = tmp_path / "test.db"
+    with open_database(path):
+        pass
+    workers = 4
+    barrier = threading.Barrier(workers)
+    errors: list[BaseException] = []
+
+    def start() -> None:
+        try:
+            barrier.wait()
+            migrate(path, WITH_V2)
+        except BaseException as exc:  # collected and asserted below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=start) for _ in range(workers)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    assert schema_version(path) == 2

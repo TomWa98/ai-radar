@@ -1,4 +1,4 @@
-"""SQLite connection handling, transactions, and schema setup.
+"""SQLite connection handling, transactions, and schema migrations.
 
 Transaction strategy:
 
@@ -11,20 +11,24 @@ Transaction strategy:
 
 ``with conn:`` must not be used for this: with ``autocommit=True`` it does
 nothing.
+
+Schema migrations (decision D1 in ``docs/architecture.md``):
+
+* :data:`MIGRATIONS` is an ordered list; migration ``n`` (1-based) brings the
+  database from ``PRAGMA user_version`` ``n - 1`` to ``n``.
+* Migrations only add tables, columns, and indexes. Never edit or reorder a
+  released migration; append a new one instead.
 """
 
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+Migration = tuple[str, ...]  # SQL statements, run in one transaction
 
-# PRAGMA values cannot be bound as parameters; the version is a constant integer.
-_SET_SCHEMA_VERSION = f"PRAGMA user_version = {SCHEMA_VERSION:d}"
-
-_SCHEMA = """
+_V1_ARTICLES = """
 CREATE TABLE articles (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     source         TEXT NOT NULL,
@@ -38,6 +42,10 @@ CREATE TABLE articles (
                    CHECK (status IN ('new', 'processing', 'analyzed', 'failed'))
 )
 """
+
+MIGRATIONS: tuple[Migration, ...] = ((_V1_ARTICLES,),)
+
+SCHEMA_VERSION = len(MIGRATIONS)
 
 DEFAULT_TIMEOUT = 5.0
 
@@ -74,22 +82,30 @@ def fetch_one(
         return cursor.fetchone()
 
 
-def init_schema(conn: sqlite3.Connection) -> None:
-    """Create the schema in an empty database; leave an up-to-date one untouched.
+def init_schema(
+    conn: sqlite3.Connection, migrations: Sequence[Migration] = MIGRATIONS
+) -> None:
+    """Apply all pending migrations; leave an up-to-date database untouched.
 
-    The version check runs inside the write transaction, so two processes
-    starting at the same time cannot both decide to create the schema.
+    Each migration runs in its own write transaction together with its version
+    update, so a failing migration leaves the previous version intact. The
+    version is read inside that transaction, so two processes starting at the
+    same time cannot both apply the same migration.
     """
-    with transaction(conn):
-        row = fetch_one(conn, "PRAGMA user_version")
-        assert row is not None
-        version = row[0]
-        if version == SCHEMA_VERSION:
-            return
-        if version != 0:
-            raise RuntimeError(f"Unsupported database schema version: {version}")
-        conn.execute(_SCHEMA)
-        conn.execute(_SET_SCHEMA_VERSION)
+    latest = len(migrations)
+    while True:
+        with transaction(conn):
+            row = fetch_one(conn, "PRAGMA user_version")
+            assert row is not None
+            version = row[0]
+            if version == latest:
+                return
+            if not 0 <= version < latest:
+                raise RuntimeError(f"Unsupported database schema version: {version}")
+            for statement in migrations[version]:
+                conn.execute(statement)
+            # PRAGMA values cannot be bound as parameters; this is an integer.
+            conn.execute(f"PRAGMA user_version = {version + 1:d}")
 
 
 @contextmanager
