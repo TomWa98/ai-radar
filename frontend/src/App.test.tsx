@@ -1,9 +1,15 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
 import { App } from "./App";
+import { LanguageProvider } from "./i18n/language";
 import { AppShell } from "./shell/AppShell";
 import type { NavItem } from "./shell/navigation";
+
+function withLanguage(ui: ReactNode) {
+  return <LanguageProvider>{ui}</LanguageProvider>;
+}
 
 function stubHealth(response: () => Promise<Response>) {
   vi.stubGlobal("fetch", vi.fn(response));
@@ -83,9 +89,9 @@ describe("backend status", () => {
 
 describe("keyboard and focus", () => {
   const ITEMS: NavItem[] = [
-    { id: "overview", label: "Overview", available: true },
-    { id: "interests", label: "Interests", available: true },
-    { id: "sources", label: "Sources", available: false },
+    { id: "overview", labelKey: "overview", available: true },
+    { id: "interests", labelKey: "interests", available: true },
+    { id: "sources", labelKey: "sources", available: false },
   ];
 
   it("starts with a skip link that moves focus to the main area", async () => {
@@ -106,7 +112,7 @@ describe("keyboard and focus", () => {
     stubHealth(healthy);
     const user = userEvent.setup();
     window.location.hash = "#/interests";
-    render(<AppShell items={ITEMS} current="interests" />);
+    render(withLanguage(<AppShell items={ITEMS} current="interests" />));
 
     await user.tab();
     await user.keyboard("{Enter}");
@@ -119,9 +125,13 @@ describe("keyboard and focus", () => {
   it("reaches available destinations by Tab and skips disabled ones", async () => {
     stubHealth(healthy);
     const user = userEvent.setup();
-    render(<AppShell items={ITEMS} current="interests" />);
+    render(withLanguage(<AppShell items={ITEMS} current="interests" />));
 
     await user.tab(); // skip link
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "DE – Deutsch" }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "EN – English" }));
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("link", { name: "Overview" }));
     await user.tab();
@@ -137,11 +147,11 @@ describe("keyboard and focus", () => {
   it("follows the URL hash", async () => {
     stubHealth(healthy);
     const user = userEvent.setup();
-    const { rerender } = render(<AppShell items={ITEMS} current="overview" />);
+    const { rerender } = render(withLanguage(<AppShell items={ITEMS} current="overview" />));
 
     await user.click(screen.getByRole("link", { name: "Interests" }));
     expect(window.location.hash).toBe("#/interests");
-    rerender(<AppShell items={ITEMS} current="interests" />);
+    rerender(withLanguage(<AppShell items={ITEMS} current="interests" />));
     expect(
       screen.getByRole("link", { name: "Interests" }).getAttribute("aria-current"),
     ).toBe("page");

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { getHealth } from "../api/client";
-import { strings } from "../strings";
+import { useLanguage } from "../i18n/language";
 
 type State = "checking" | "reachable" | "unreachable";
 
 /** Truthful backend status from GET /health; no simulated "live" state. */
 export function HealthStatus() {
+  const { t } = useLanguage();
   const [state, setState] = useState<State>("checking");
 
   useEffect(() => {
@@ -22,7 +23,7 @@ export function HealthStatus() {
 
   return (
     <p className={`health health--${state}`} role="status">
-      {strings.backend[state]}
+      {t.backend[state]}
     </p>
   );
 }

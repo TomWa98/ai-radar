@@ -195,6 +195,8 @@ npm run dev               # http://127.0.0.1:5173
 
 Der Vite-Dev-Server lauscht nur auf `127.0.0.1` und leitet `/api` und `/health` an das Backend auf `127.0.0.1:8000` weiter (kein CORS nötig). Gestaltung und Interaktion folgen [`docs/frontend-design.md`](docs/frontend-design.md).
 
+Die Oberfläche ist über den Umschalter DE/EN in der Top-Bar zweisprachig. Die Wahl wird im Browser gespeichert (`localStorage`, sonst Browsersprache) und als `lang` an die API übergeben; ein Wechsel lädt nur die vorhandenen Texte in der anderen Sprache neu und löst keine neue KI-Analyse aus.
+
 Prüfungen (wie in der CI):
 
 ```bash

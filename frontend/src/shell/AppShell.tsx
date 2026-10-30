@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from "react";
-import { strings } from "../strings";
+import { LanguageSwitch } from "../i18n/LanguageSwitch";
+import { useLanguage } from "../i18n/language";
 import { HealthStatus } from "./HealthStatus";
 import { NAV_ITEMS, hrefFor, type NavItem, type RouteId } from "./navigation";
 
@@ -18,16 +19,20 @@ function skipToMain(event: MouseEvent<HTMLAnchorElement>) {
 
 /** Top bar, sidebar navigation, and main area (docs/frontend-design.md, 3). */
 export function AppShell({ items = NAV_ITEMS, current, children }: AppShellProps) {
+  const { t } = useLanguage();
   return (
     <div className="shell">
       <a className="skip-link" href="#main" onClick={skipToMain}>
-        {strings.skipToContent}
+        {t.skipToContent}
       </a>
       <header className="topbar">
-        <span className="topbar__product">{strings.productName}</span>
-        <HealthStatus />
+        <span className="topbar__product">{t.productName}</span>
+        <div className="topbar__status">
+          <HealthStatus />
+          <LanguageSwitch />
+        </div>
       </header>
-      <nav className="sidebar" aria-label={strings.mainNavigation}>
+      <nav className="sidebar" aria-label={t.mainNavigation}>
         <ul className="sidebar__list">
           {items.map((item) => (
             <li key={item.id}>
@@ -37,15 +42,15 @@ export function AppShell({ items = NAV_ITEMS, current, children }: AppShellProps
                   href={hrefFor(item.id)}
                   aria-current={item.id === current ? "page" : undefined}
                 >
-                  {item.label}
+                  {t.nav[item.labelKey]}
                 </a>
               ) : (
                 <span
                   className="sidebar__link sidebar__link--disabled"
                   aria-disabled="true"
                 >
-                  {item.label}
-                  <span className="sidebar__note">{strings.notAvailableYet}</span>
+                  {t.nav[item.labelKey]}
+                  <span className="sidebar__note">{t.notAvailableYet}</span>
                 </span>
               )}
             </li>
