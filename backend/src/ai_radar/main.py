@@ -25,17 +25,19 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from ai_radar.db import open_database
 from ai_radar.feeds.api import router as feeds_router
+from ai_radar.ingest.api import router as refresh_router
 from ai_radar.ingest.scheduler import (
     IngestionRunner,
     fetch_interval_seconds,
     ingest_stored_feeds_once,
     run_periodically,
 )
+from ai_radar.security import LOCAL_HOSTS
 
 DB_PATH_ENV = "AI_RADAR_DB"
 FETCH_INTERVAL_ENV = "AI_RADAR_FETCH_INTERVAL_MINUTES"
 DEFAULT_DB_PATH = "ai-radar.db"
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+ALLOWED_HOSTS = list(LOCAL_HOSTS)
 
 
 @asynccontextmanager
@@ -66,6 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="AI Radar", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 app.include_router(feeds_router)
+app.include_router(refresh_router)
 
 
 @app.get("/health")

@@ -64,6 +64,15 @@ Die Datenbankdatei wird über `AI_RADAR_DB` festgelegt (Standard: `ai-radar.db` 
 
 Solange der Server läuft, ruft er alle aktivierten, gespeicherten Feeds direkt nach dem Start und danach alle 15 Minuten ab. Das Intervall in Minuten lässt sich mit `AI_RADAR_FETCH_INTERVAL_MINUTES` ändern; `0` schaltet den automatischen Abruf ab. Läuft ein Abruf noch, wird der nächste übersprungen statt doppelt gestartet.
 
+Ein Abruf lässt sich auch manuell anstoßen:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/refresh   # → 202 (gestartet) oder 409 (läuft bereits)
+curl http://127.0.0.1:8000/api/refresh           # → {"running": …, "last_started_at": …, "last_finished_at": …}
+```
+
+Manuelle und automatische Abrufe laufen nie gleichzeitig. Anfragen, die ein Browser von einer fremden Website sendet (`Origin` nicht `127.0.0.1`/`localhost`), werden mit `403` abgelehnt.
+
 ```bash
 cd backend && AI_RADAR_DB=../ai-radar.db ../.venv/bin/uvicorn ai_radar.main:app --reload
 ```
