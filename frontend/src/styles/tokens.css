@@ -1,0 +1,63 @@
+/*
+ * Design tokens from docs/frontend-design.md (Silver / Monochrome, dark).
+ * Use these variables instead of literal values in components.
+ */
+:root {
+  /* Colors (section 2.1) */
+  --color-bg: #0c0d10;
+  --color-surface: #1c1f24;
+  --color-surface-hover: #252a31;
+  /* Decorative separators and card outlines only (about 1.2:1). */
+  --color-border: #2a2d33;
+  /* Boundaries of interactive controls: WCAG 1.4.11, at least 3:1 on bg,
+     surface, and surface-hover (5.0 / 4.25 / 3.72:1). Decision 8. */
+  --color-border-interactive: #7a828d;
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #9aa3ae;
+  --color-accent: #d5d9df;
+  --color-focus: #d5d9df;
+
+  /* Typography (section 2.2, decision 2): system font stack; Inter or Geist
+     only if installed locally. No font files and no download. */
+  --font-family: Inter, Geist, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-weight-regular: 400;
+  --font-weight-semibold: 600;
+  --line-height-tight: 1.25;
+  --line-height-body: 1.6;
+
+  /* Spacing scale (4/8/12/16/24/32 px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Shape */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+
+  /* Focus ring */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --sidebar-width-compact: 200px;
+  --topbar-height: 56px;
+
+  /* Motion: brief; disabled for users who prefer reduced motion. */
+  --duration-fast: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+  }
+}
