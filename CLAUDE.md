@@ -7,6 +7,7 @@ Before proposing or implementing changes, read:
 - `docs/requirements.md` — product requirements and scope
 - `docs/architecture.md` — architecture and technology decisions
 - `README.md` — project overview and current status
+- `docs/frontend-design.md` — binding visual and interaction design for **all frontend work** (tokens, layout, Editorial Grid, News Wall, states); apply its acceptance checklist (section 9) to every frontend PR. It governs design, not functional scope: if it conflicts with an issue, `docs/requirements.md`, or `docs/architecture.md`, report the conflict instead of resolving it silently.
 
 If a document is missing, outdated, or conflicts with another, **ask the user** rather than inventing a decision. Do not claim features exist until verified in code.
 
