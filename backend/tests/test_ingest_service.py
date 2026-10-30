@@ -7,7 +7,7 @@ import pytest
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import open_database
 from ai_radar.ingest.__main__ import main, read_feed_list
-from ai_radar.ingest.fetch import FetchError
+from ai_radar.ingest.fetch import FetchedFeed, FetchError
 from ai_radar.ingest.service import ingest_feeds, redact_url
 
 COLLECTED_AT = datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
@@ -25,15 +25,17 @@ FEED_B = b"""<feed xmlns="http://www.w3.org/2005/Atom"><title>Feed B</title>
 
 
 class FakeFetcher:
-    def __init__(self, responses: dict[str, bytes | Exception]) -> None:
+    def __init__(self, responses: dict[str, bytes | FetchedFeed | Exception]) -> None:
         self.responses = responses
         self.calls: list[str] = []
 
-    def __call__(self, url: str) -> bytes:
+    def __call__(self, url: str) -> FetchedFeed:
         self.calls.append(url)
         response = self.responses[url]
         if isinstance(response, Exception):
             raise response
+        if isinstance(response, bytes):
+            return FetchedFeed(response, url)
         return response
 
 
@@ -86,6 +88,21 @@ def test_failing_feeds_do_not_stop_others(repository: ArticleRepository) -> None
     assert results[3].new == 2
 
 
+def test_relative_links_use_final_url(repository: ArticleRepository) -> None:
+    feed = b"""<rss version="2.0"><channel><title>Moved</title>
+      <item><title>Rel</title><link>/posts/1</link></item>
+    </channel></rss>"""
+    fetch = FakeFetcher(
+        {"https://old.example/rss": FetchedFeed(feed, "https://new.example/feeds/rss")}
+    )
+
+    (result,) = ingest_feeds(fetch.responses, fetch, repository, lambda: COLLECTED_AT)
+
+    assert result.new == 1
+    assert repository.get_by_url("https://new.example/posts/1") is not None
+    assert repository.get_by_url("https://old.example/posts/1") is None
+
+
 def test_redact_url() -> None:
     assert redact_url("https://user:pw@example.com/feed") == "https://example.com/feed"
     assert redact_url("https://example.com/feed") == "https://example.com/feed"
@@ -127,6 +144,20 @@ def test_cli_reports_failures(
     assert (
         "https://down.example/rss: failed: HTTP status 503" in capsys.readouterr().out
     )
+
+
+def test_cli_rejects_missing_db_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fetch = FakeFetcher({"https://a.example/rss": FEED_A})
+    db = tmp_path / "missing" / "radar.db"
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--db", str(db), "https://a.example/rss"], fetch)
+
+    assert exc.value.code == 2
+    assert "database directory does not exist" in capsys.readouterr().err
+    assert fetch.calls == []
 
 
 def test_cli_requires_feeds(tmp_path: Path) -> None:
