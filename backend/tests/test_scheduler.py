@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import threading
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from ai_radar.feeds.repository import FeedRepository
 from ai_radar.ingest.fetch import FetchedFeed, FetchError
 from ai_radar.ingest.scheduler import (
     IngestionRunner,
+    RunStatus,
     fetch_interval_seconds,
     ingest_stored_feeds_once,
     run_periodically,
@@ -206,3 +208,96 @@ def test_invalid_interval_fails_startup(
     with pytest.raises(ValueError, match="Invalid fetch interval"):
         with TestClient(app, base_url="http://127.0.0.1"):
             pass
+
+
+# --- Manual start and status -------------------------------------------------
+
+
+class StepClock:
+    def __init__(self) -> None:
+        self.now = datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        current = self.now
+        self.now += timedelta(minutes=1)
+        return current
+
+
+def test_try_start_runs_in_background_and_records_status() -> None:
+    started = threading.Event()
+    release = threading.Event()
+    clock = StepClock()
+
+    def slow() -> None:
+        started.set()
+        release.wait(5)
+
+    runner = IngestionRunner(slow, clock)
+    assert runner.status() == RunStatus(False, None, None)
+
+    assert runner.try_start() is True  # returns before the pass finishes
+    assert started.wait(5)
+    running = runner.status()
+    assert running.running is True
+    assert running.last_started_at == datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
+    assert running.last_finished_at is None
+
+    release.set()
+    assert runner.wait_until_idle(5)
+    done = runner.status()
+    assert done.running is False
+    assert done.last_started_at == running.last_started_at
+    assert done.last_finished_at == datetime(2026, 10, 30, 12, 1, tzinfo=UTC)
+
+
+def test_manual_and_scheduled_passes_share_the_lock() -> None:
+    release = threading.Event()
+    runs: list[int] = []
+
+    def slow() -> None:
+        runs.append(1)
+        release.wait(5)
+
+    runner = IngestionRunner(slow)
+    try:
+        assert runner.try_start() is True
+        assert runner.try_start() is False
+        assert runner.try_run() is False
+    finally:
+        release.set()
+    assert runner.wait_until_idle(5)
+    assert runs == [1]
+    assert runner.try_run() is True  # scheduled pass after the manual one
+
+
+def test_failing_background_pass_is_logged_and_releases_lock(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    def fail() -> None:
+        raise RuntimeError("secret detail")
+
+    runner = IngestionRunner(fail)
+    with caplog.at_level(logging.ERROR):
+        assert runner.try_start() is True
+        assert runner.wait_until_idle(5)
+
+    assert "Manual ingestion failed: RuntimeError" in caplog.text
+    assert "secret detail" not in caplog.text
+    status = runner.status()
+    assert status.running is False and status.last_finished_at is not None
+    assert runner.try_start() is True
+    assert runner.wait_until_idle(5)
+
+
+def test_failed_thread_start_releases_lock(monkeypatch: pytest.MonkeyPatch) -> None:
+    def broken_start(self: threading.Thread) -> None:
+        raise RuntimeError("can't start new thread")
+
+    runner = IngestionRunner(lambda: None)
+    monkeypatch.setattr(threading.Thread, "start", broken_start)
+    with pytest.raises(RuntimeError):
+        runner.try_start()
+    monkeypatch.undo()
+
+    assert runner.status().running is False
+    assert runner.try_run() is True
