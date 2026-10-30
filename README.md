@@ -38,7 +38,7 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Vorhanden sind ein minimales FastAPI-Backend mit Health-Check (`GET /health`), SQLite-Artikelspeicherung mit Deduplizierung und ein manuell gestarteter RSS-/Atom-Abruf per CLI. Scheduler, KI-Analyse und Frontend sind noch nicht implementiert.
+Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung und ein manuell gestarteter RSS-/Atom-Abruf per CLI. Scheduler, KI-Analyse und Frontend sind noch nicht implementiert.
 
 ## Backend lokal starten
 
@@ -59,6 +59,29 @@ curl http://127.0.0.1:8000/health   # → {"status":"ok"}
 ```
 
 Die interaktive API-Dokumentation ist unter http://127.0.0.1:8000/docs erreichbar.
+
+Die Datenbankdatei wird über `AI_RADAR_DB` festgelegt (Standard: `ai-radar.db` im Arbeitsverzeichnis, also `backend/` beim obigen Startbefehl). Schema und Migrationen werden beim Start angelegt.
+
+```bash
+cd backend && AI_RADAR_DB=../ai-radar.db ../.venv/bin/uvicorn ai_radar.main:app --reload
+```
+
+## Feeds verwalten (API)
+
+| Methode | Pfad | Ergebnis |
+|---|---|---|
+| `GET` | `/api/feeds` | Liste aller Feeds |
+| `POST` | `/api/feeds` | Feed anlegen (`url`, optional `name`, `enabled`, `fetch_full_text`) → `201`; ungültige URL `422`, doppelte URL `409` |
+| `PATCH` | `/api/feeds/{id}` | Nur übergebene Felder ändern → `200`; unbekannte ID `404` |
+| `DELETE` | `/api/feeds/{id}` | Feed entfernen → `204`; bereits gespeicherte Artikel bleiben erhalten |
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/feeds \
+  -H 'Content-Type: application/json' \
+  -d '{"url": "https://example.com/feed.xml", "name": "Example"}'
+```
+
+Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz und ist nur für `127.0.0.1` vorgesehen (D9); Anfragen mit einem anderen `Host`-Header als `127.0.0.1` oder `localhost` werden mit `400` abgelehnt (Schutz vor DNS-Rebinding).
 
 ## Feeds abrufen
 
