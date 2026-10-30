@@ -35,10 +35,11 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 - [Anforderungen](docs/requirements.md) – fachlicher Umfang und Akzeptanzgrundlage
 - [Architektur](docs/architecture.md) – Komponenten, Datenflüsse und technische Entscheidungen
 - [Agenten-Workflow](docs/agentic-workflow.md) – Issue-gesteuerte Entwicklung mit `/autonomous-feature`
+- [Frontend-Design](docs/frontend-design.md) – verbindliche Gestaltung und Interaktion für alle Frontend-Arbeiten
 
 ## Projektstatus
 
-Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess mit anschließender Analyse (derzeit mit dem FakeAnalyzer) und ein manuell gestarteter Abruf per CLI. Echter LLM-Anbieter und Frontend sind noch nicht implementiert.
+Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess mit anschließender Analyse (derzeit mit dem FakeAnalyzer) und ein manuell gestarteter Abruf per CLI. Das Frontend unter `frontend/` besteht bisher aus dem Grundgerüst (App-Shell mit Navigation und Backend-Status); die fachlichen Ansichten folgen.
 
 ## Backend lokal starten
 
@@ -180,6 +181,30 @@ Abgerufen werden nur öffentliche `http`/`https`-Adressen (SSRF-Schutz, siehe [A
 .venv/bin/pytest backend
 ```
 
+## Frontend lokal starten
+
+Voraussetzung: Node.js in der Version aus `frontend/.nvmrc` (Node 24 LTS), z. B. mit `nvm use`.
+
+```bash
+cd frontend
+npm ci --ignore-scripts   # exakte Versionen aus package-lock.json
+
+# Backend in einem zweiten Terminal starten (siehe oben), dann:
+npm run dev               # http://127.0.0.1:5173
+```
+
+Der Vite-Dev-Server lauscht nur auf `127.0.0.1` und leitet `/api` und `/health` an das Backend auf `127.0.0.1:8000` weiter (kein CORS nötig). Gestaltung und Interaktion folgen [`docs/frontend-design.md`](docs/frontend-design.md).
+
+Prüfungen (wie in der CI):
+
+```bash
+cd frontend
+npm run lint     # ESLint
+npm test         # Vitest + Testing Library (inkl. Tastatur-/Fokus- und Kontrasttests)
+npm run build    # Typprüfung (tsc) und Produktions-Build
+npm audit        # bekannte Schwachstellen in npm-Paketen
+```
+
 ## Continuous Integration
 
 Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei Pull Requests gegen `main` und bei Pushes auf `main`. Jeder Befund lässt die Pipeline fehlschlagen.
@@ -190,6 +215,7 @@ Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei Pull Request
 | Backend (nur Python 3.14) | `pip-audit`: bekannte Schwachstellen in installierten Python-Paketen |
 | Gitleaks | Secret-Scan über die gesamte Git-Historie |
 | Semgrep | Statische Sicherheitsanalyse von `backend/` mit dem öffentlichen Regelsatz `p/python`, ohne Semgrep-Account |
+| Frontend | `npm ci --ignore-scripts`, ESLint, Vitest, Typprüfung und Build, `npm audit` (Node-Version aus `frontend/.nvmrc`) |
 
 Der Workflow hat nur Leserechte (`contents: read`). Actions sind auf Commit-SHAs, Docker-Images auf Digests gepinnt.
 

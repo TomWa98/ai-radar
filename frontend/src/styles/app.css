@@ -1,0 +1,195 @@
+/* Global styles and app shell. Values come from tokens.css. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-body);
+}
+
+h1,
+h2,
+h3 {
+  line-height: var(--line-height-tight);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-3);
+}
+
+h1 {
+  font-size: var(--font-size-xl);
+}
+
+p {
+  margin: 0 0 var(--space-3);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+/* Visible keyboard focus everywhere (WCAG 2.4.7, 1.4.11). */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-2);
+  top: var(--space-2);
+  z-index: 10;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-interactive);
+  transform: translateY(-200%);
+  transition: transform var(--duration-fast) ease-out;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--topbar-height) 1fr;
+  grid-template-areas:
+    "topbar topbar"
+    "sidebar content";
+  min-height: 100vh;
+}
+
+.topbar {
+  grid-area: topbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: 0 var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.topbar__product {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.01em;
+}
+
+.health {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.sidebar {
+  grid-area: sidebar;
+  padding: var(--space-4) var(--space-3);
+  border-right: 1px solid var(--color-border);
+}
+
+.sidebar__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.sidebar__link {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: background-color var(--duration-fast) ease-out;
+}
+
+a.sidebar__link:hover {
+  background: var(--color-surface-hover);
+}
+
+.sidebar__link[aria-current="page"] {
+  background: var(--color-surface);
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+.sidebar__link--disabled {
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+.sidebar__note {
+  font-size: var(--font-size-xs);
+}
+
+.content {
+  grid-area: content;
+  padding: var(--space-6) var(--space-5);
+  min-width: 0;
+}
+
+.content:focus {
+  outline: none;
+}
+
+.empty-state {
+  max-width: 40rem;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.empty-state p {
+  color: var(--color-text-secondary);
+}
+
+/* Tablet: narrower sidebar (section 6). */
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: var(--sidebar-width-compact) minmax(0, 1fr);
+  }
+}
+
+/* Mobile: navigation moves below the top bar; no horizontal scrolling. */
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--topbar-height) auto 1fr;
+    grid-template-areas:
+      "topbar"
+      "sidebar"
+      "content";
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .sidebar__list {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .sidebar__link {
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .content {
+    padding: var(--space-5) var(--space-4);
+  }
+}
