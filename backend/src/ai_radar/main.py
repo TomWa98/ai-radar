@@ -6,6 +6,10 @@ Configuration (environment variables):
   working directory).
 * ``AI_RADAR_FETCH_INTERVAL_MINUTES``: how often the stored feeds are fetched
   (default 15); ``0`` disables the scheduler.
+* ``AI_RADAR_ANALYZER``: analyzer for new articles (default and currently only
+  value ``fake``; no paid API is called without explicit configuration, D5).
+* ``AI_RADAR_ANALYSIS_MAX_ATTEMPTS`` (default 3) and
+  ``AI_RADAR_ANALYSIS_CONCURRENCY`` (default 2).
 
 The API has no authentication and is meant for ``127.0.0.1`` only (D9).
 Requests for any other ``Host`` are rejected, so a website using DNS rebinding
@@ -23,13 +27,15 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
+from ai_radar.analysis.pipeline import AnalysisSettings
+from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import open_database
 from ai_radar.feeds.api import router as feeds_router
 from ai_radar.ingest.api import router as refresh_router
 from ai_radar.ingest.scheduler import (
     IngestionRunner,
     fetch_interval_seconds,
-    ingest_stored_feeds_once,
+    ingest_and_analyze_once,
     run_periodically,
 )
 from ai_radar.security import LOCAL_HOSTS
@@ -44,11 +50,16 @@ ALLOWED_HOSTS = list(LOCAL_HOSTS)
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Prepare the database, then run the feed scheduler until shutdown."""
     interval = fetch_interval_seconds(os.environ.get(FETCH_INTERVAL_ENV))
+    analysis = AnalysisSettings.from_env(os.environ)
+    analyzer = analysis.create_analyzer()
     db_path = Path(os.environ.get(DB_PATH_ENV, DEFAULT_DB_PATH))
-    with open_database(db_path):  # create or migrate the schema once
-        pass
+    with open_database(db_path) as conn:  # create or migrate the schema once
+        # Analysis only runs in this process; nothing is in progress yet.
+        ArticleRepository(conn).reset_interrupted()
     app.state.db_path = db_path
-    app.state.ingestion = IngestionRunner(partial(ingest_stored_feeds_once, db_path))
+    app.state.ingestion = IngestionRunner(
+        partial(ingest_and_analyze_once, db_path, analyzer, analysis)
+    )
 
     scheduler = None
     if interval is not None:

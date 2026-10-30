@@ -55,3 +55,6 @@ class Article:
     feed_id: int | None
     full_text: str | None = None
     analysis_basis: AnalysisBasis | None = None  # None: collected before D3
+    analysis_attempts: int = 0  # finished analysis attempts
+    analysis_error: str | None = None  # safe message of the last failure
+    analysis_attempted_at: datetime | None = None

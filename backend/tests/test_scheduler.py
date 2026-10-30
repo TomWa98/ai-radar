@@ -182,8 +182,8 @@ def test_lifespan_starts_and_stops_scheduler(
     monkeypatch.setenv(FETCH_INTERVAL_ENV, "15")
     passes = threading.Event()
     monkeypatch.setattr(
-        "ai_radar.main.ingest_stored_feeds_once",
-        lambda db_path: passes.set(),
+        "ai_radar.main.ingest_and_analyze_once",
+        lambda db_path, analyzer, settings: passes.set(),
     )
 
     with TestClient(app, base_url="http://127.0.0.1"):

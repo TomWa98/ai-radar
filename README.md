@@ -38,7 +38,7 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess und ein manuell gestarteter Abruf per CLI. KI-Analyse und Frontend sind noch nicht implementiert.
+Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess mit anschließender Analyse (derzeit mit dem FakeAnalyzer) und ein manuell gestarteter Abruf per CLI. Echter LLM-Anbieter und Frontend sind noch nicht implementiert.
 
 ## Backend lokal starten
 
@@ -70,6 +70,8 @@ Ein Abruf lässt sich auch manuell anstoßen:
 curl -X POST http://127.0.0.1:8000/api/refresh   # → 202 (gestartet) oder 409 (läuft bereits)
 curl http://127.0.0.1:8000/api/refresh           # → {"running": …, "last_started_at": …, "last_finished_at": …}
 ```
+
+Nach jedem Abruf im Serverprozess werden neue Artikel analysiert (Status `new` → `processing` → `analyzed` bzw. `failed`). Fehlgeschlagene Analysen werden in späteren Läufen erneut versucht, bis `AI_RADAR_ANALYSIS_MAX_ATTEMPTS` (Standard 3) erreicht ist; Fehlermeldung und Anzahl der Versuche werden gespeichert. `AI_RADAR_ANALYSIS_CONCURRENCY` (Standard 2) begrenzt gleichzeitige Analysen. Standard und derzeit einzige Option für `AI_RADAR_ANALYZER` ist `fake` (deterministischer FakeAnalyzer, keine kostenpflichtigen API-Aufrufe). Per CLI abgerufene Artikel werden beim nächsten Lauf des Servers analysiert.
 
 Manuelle und automatische Abrufe laufen nie gleichzeitig. Anfragen, die ein Browser von einer fremden Website sendet (`Origin` nicht `127.0.0.1`/`localhost`), werden mit `403` abgelehnt.
 

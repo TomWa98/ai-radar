@@ -16,6 +16,14 @@ from ai_radar.analysis.models import (
 )
 
 
+class AnalysisError(Exception):
+    """An analysis failed; the message is safe to store and show.
+
+    It must never contain secrets or article text. Analyzers raise it for
+    expected failures; any other exception is recorded by type only.
+    """
+
+
 class Analyzer(Protocol):
     def analyze(self, item: AnalysisInput) -> AnalysisResult:
         """Analyze one article; raise on failure, never return partial results."""

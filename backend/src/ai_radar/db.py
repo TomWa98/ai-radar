@@ -115,12 +115,22 @@ _V5_ANALYSES: Migration = (
     """,
 )
 
+# Analysis bookkeeping per article (FR-13, FR-33): finished attempts, the
+# safe message of the last failure, and when the last attempt was claimed.
+_V6_ANALYSIS_STATUS: Migration = (
+    "ALTER TABLE articles ADD COLUMN analysis_attempts INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE articles ADD COLUMN analysis_error TEXT",
+    "ALTER TABLE articles ADD COLUMN analysis_attempted_at TEXT",
+    "CREATE INDEX articles_status ON articles (status)",
+)
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
     _V3_FEED_STATUS,
     _V4_FULL_TEXT,
     _V5_ANALYSES,
+    _V6_ANALYSIS_STATUS,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
