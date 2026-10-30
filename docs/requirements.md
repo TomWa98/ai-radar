@@ -99,7 +99,7 @@ Beide Sprachversionen der KI-Inhalte werden dauerhaft gespeichert. Kategorien un
 
 ## 5. Noch fachlich zu klären
 
-Diese Punkte sind **noch nicht entschieden** und werden nicht stillschweigend implementiert:
+Diese Punkte sind **noch nicht entschieden** und werden nicht stillschweigend implementiert: Für den MVP getroffene Festlegungen stehen in [`architecture.md` §8](architecture.md#8-mvp-entscheidungen) (D3, D4, D6, D9, D10).
 
 - **Zugriff:** Nur eine Person/lokal oder auch andere Geräte im Heimnetz?
 - **Interessenlernen:** Nach welchen nachvollziehbaren Regeln beeinflusst Feedback spätere Scores? Wie gehen wir mit wenig Feedback um?

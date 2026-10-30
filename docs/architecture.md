@@ -147,12 +147,25 @@ Bibliotheken für Volltextextraktion, ORM/Migrationen, Scheduling und Frontend-R
 
 ## 7. Bewusst noch nicht festgelegt
 
-- Konkrete Python-/Node-Versionen und Paketmanager.
-- Vollständiges Datenbankschema und Migrationsablauf über Version 1 hinaus.
-- Volltextextraktionsbibliothek.
-- Scheduler-Bibliothek, Queue-Mechanik und Prozessmodell.
-- LLM-Modell, Prompt-Design, exakte Token-/Kostenlimits.
-- Konkrete API-Endpunkte, UI-Routing und Authentisierung im Heimnetz.
-- Repository-Verzeichnisstruktur, Testsuite und CI-Tooling.
+- Docker-Compose-Aufbau (Images, Auslieferung des Frontend-Builds) für den Ubuntu-Betrieb.
+- Konkretes LLM-Modell und Monatsbudget für echte API-Aufrufe (siehe D5).
+- Zugriffskonzept und Authentisierung für den Heimnetzbetrieb (siehe D9).
 
 Diese Punkte werden inkrementell entschieden, bevor sie implementiert werden. **Keine automatische Erweiterung des Scopes durch Coding-Agenten.**
+
+## 8. MVP-Entscheidungen
+
+Freigegeben am 30.10.2026 für den MVP-Backlog. Abhängigkeiten, die hier genannt sind, gelten als genehmigt; jede weitere Abhängigkeit braucht eine eigene Entscheidung.
+
+| ID | Thema | Entscheidung |
+|---|---|---|
+| D1 | Schema-Migrationen | Sequenzielle SQL-Migrationen im Code, Version über `PRAGMA user_version`, je Migration eine Transaktion; kein Alembic/ORM. Migrationen ergänzen Tabellen, Spalten und Indizes; Umbau oder Löschung bestehender Daten erfordert eine eigene Entscheidung. |
+| D2 | Scheduler | Hintergrund-Task im FastAPI-Lifespan (ein Prozess), Abruf alle 15 Minuten, Lock gegen überlappende Läufe; keine zusätzliche Bibliothek. |
+| D3 | Volltext | Bibliothek `trafilatura`. Volltext wird nur für Feeds mit aktiviertem Opt-in (`fetch_full_text`, Standard aus) abgerufen; der Nutzer verantwortet die Nutzungsbedingungen je Quelle. Abruf über den SSRF-geschützten Fetcher; ohne Volltext wird der Feed-Auszug verwendet und die Analysebasis gespeichert. |
+| D4 | Allgemeine Bedeutung | Skala 1–5, getrennt von der persönlichen Relevanz (1–5). |
+| D5 | LLM-Anbieter und Kosten | OpenAI-API direkt über `httpx` (kein SDK); Modell und Preise je Token per Umgebungsvariable. Token-Verbrauch und geschätzte Kosten werden je Aufruf gespeichert. Echte, kostenpflichtige Aufrufe sind deaktiviert, bis der Nutzer ausdrücklich ein konkretes Monatsbudget freigibt und konfiguriert (Standard: Budget 0 = keine Live-Aufrufe); bei Erreichen des Budgets werden Aufrufe gestoppt. Tests und Standardbetrieb nutzen den FakeAnalyzer. |
+| D6 | Personalisierung | Einfache, regelbasierte und nachvollziehbare Heuristik, kein Machine Learning: Der Analyzer liefert je Artikel Themen-Stichwörter; „relevant“ zählt +1, „irrelevant“ −1 je Thema. Ein Thema wird ab 3 Bewertungen als gelernte Präferenz geführt und angezeigt. Gelernte Präferenzen und manuelle Interessen werden getrennt gespeichert und an den Analyzer übergeben; sie wirken nur auf neue Bewertungen. Zurücksetzen löscht nur gelernte Präferenzen. |
+| D7 | Suche | SQLite FTS5 über Titel und Artikelinhalt (in SQLite enthalten). |
+| D8 | Frontend | React, React DOM, Vite, TypeScript, Vitest, Testing Library, ESLint; npm mit `package-lock.json`, Node-LTS-Version festgelegt in `.nvmrc`. Kein Router-, i18n- oder UI-Framework (Ansichten über Hash-Navigation, eigene DE/EN-Wörterbücher). Ein CI-Job für Lint, Tests, Build und `npm audit`; Frontend-Entwicklung über den Vite-Proxy, kein CORS. Externe Inhalte nur als Text rendern, kein `dangerouslySetInnerHTML`. |
+| D9 | Zugriff | Erster MVP nur über `127.0.0.1` (Backend und Frontend). LAN-Zugriff ist als spätere Erweiterung vorgesehen und setzt ein eigenes Zugriffskonzept voraus. |
+| D10 | News-Wall | Bis zu 9 Karten gleichzeitig, Seitenwechsel alle 20 Sekunden; „neu und besonders relevant“ = jünger als 3 Stunden und persönliche Relevanz ≥ 4. |
