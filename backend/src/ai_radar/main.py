@@ -42,6 +42,7 @@ from ai_radar.ingest.scheduler import (
     run_periodically,
 )
 from ai_radar.interests.api import router as interests_router
+from ai_radar.preferences.api import router as preferences_router
 from ai_radar.security import LOCAL_HOSTS
 
 DB_PATH_ENV = "AI_RADAR_DB"
@@ -86,6 +87,7 @@ app.include_router(feeds_router)
 app.include_router(refresh_router)
 app.include_router(interests_router)
 app.include_router(feedback_router)
+app.include_router(preferences_router)
 
 
 @app.get("/health")
