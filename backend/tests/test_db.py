@@ -49,11 +49,12 @@ def schema_version(path: Path) -> int:
 
 # Test-only migration on top of the real ones. CREATE TABLE without IF NOT EXISTS
 # fails if it is ever applied twice.
-V2_FEEDS: Migration = (
-    "CREATE TABLE test_feeds (id INTEGER PRIMARY KEY, url TEXT NOT NULL)",
-    "ALTER TABLE articles ADD COLUMN test_feed_id INTEGER",
+TEST_MIGRATION: Migration = (
+    "CREATE TABLE test_extra (id INTEGER PRIMARY KEY, url TEXT NOT NULL)",
+    "ALTER TABLE articles ADD COLUMN test_extra_id INTEGER",
 )
-WITH_V2 = (*MIGRATIONS, V2_FEEDS)
+WITH_TEST = (*MIGRATIONS, TEST_MIGRATION)
+TEST_VERSION = len(WITH_TEST)
 
 
 def table_names(path: Path) -> set[str]:
@@ -195,30 +196,32 @@ def test_migrations_are_numbered_by_position() -> None:
 def test_empty_database_is_migrated_to_latest(tmp_path: Path) -> None:
     path = tmp_path / "test.db"
 
-    migrate(path, WITH_V2)
+    migrate(path, WITH_TEST)
 
-    assert schema_version(path) == 2
-    assert {"articles", "test_feeds"} <= table_names(path)
+    assert schema_version(path) == TEST_VERSION
+    assert {"articles", "feeds", "test_extra"} <= table_names(path)
 
 
 def test_populated_v1_database_is_migrated_without_losing_articles(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "test.db"
-    with open_database(path) as conn:
+    migrate(path, MIGRATIONS[:1])
+    with closing(connect(path)) as conn:
         assert schema_version(path) == 1
         repository = ArticleRepository(conn)
         first = repository.add(make_article("https://example.com/a"))
         second = repository.add(make_article("https://example.com/b"))
 
-    migrate(path, WITH_V2)
+    migrate(path, WITH_TEST)
 
-    assert schema_version(path) == 2
+    assert schema_version(path) == TEST_VERSION
+    assert "feeds" in table_names(path)
     with closing(connect(path)) as conn:
         repository = ArticleRepository(conn)
         assert first is not None and repository.get_by_id(first.id) == first
         assert second is not None and repository.get_by_id(second.id) == second
-        row = fetch_one(conn, "SELECT test_feed_id FROM articles LIMIT 1")
+        row = fetch_one(conn, "SELECT test_extra_id FROM articles LIMIT 1")
         assert row is not None and row[0] is None
 
 
@@ -233,10 +236,11 @@ def test_failing_migration_keeps_previous_version(tmp_path: Path) -> None:
 
     with closing(connect(path)) as conn:
         with pytest.raises(sqlite3.OperationalError):
-            init_schema(conn, (*WITH_V2, broken))
+            init_schema(conn, (*WITH_TEST, broken))
         assert not conn.in_transaction
 
-    assert schema_version(path) == 2  # v2 committed, v3 rolled back entirely
+    # The test migration committed; the broken one rolled back entirely.
+    assert schema_version(path) == TEST_VERSION
     assert "half_done" not in table_names(path)
     with closing(connect(path)) as conn:
         assert count_articles(conn) == 1
@@ -253,7 +257,7 @@ def test_concurrent_migration_applies_each_migration_once(tmp_path: Path) -> Non
     def start() -> None:
         try:
             barrier.wait()
-            migrate(path, WITH_V2)
+            migrate(path, WITH_TEST)
         except BaseException as exc:  # collected and asserted below
             errors.append(exc)
 
@@ -264,4 +268,4 @@ def test_concurrent_migration_applies_each_migration_once(tmp_path: Path) -> Non
         thread.join()
 
     assert errors == []
-    assert schema_version(path) == 2
+    assert schema_version(path) == TEST_VERSION

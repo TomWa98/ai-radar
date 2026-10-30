@@ -43,7 +43,21 @@ CREATE TABLE articles (
 )
 """
 
-MIGRATIONS: tuple[Migration, ...] = ((_V1_ARTICLES,),)
+# Feeds are not linked to articles, so removing a feed never removes articles.
+_V2_FEEDS = """
+CREATE TABLE feeds (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    url             TEXT NOT NULL,
+    normalized_url  TEXT NOT NULL UNIQUE,
+    name            TEXT,
+    enabled         INTEGER NOT NULL DEFAULT 1 CHECK (enabled IN (0, 1)),
+    fetch_full_text INTEGER NOT NULL DEFAULT 0 CHECK (fetch_full_text IN (0, 1)),
+    created_at      TEXT NOT NULL,
+    updated_at      TEXT NOT NULL
+)
+"""
+
+MIGRATIONS: tuple[Migration, ...] = ((_V1_ARTICLES,), (_V2_FEEDS,))
 
 SCHEMA_VERSION = len(MIGRATIONS)
 
