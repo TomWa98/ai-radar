@@ -86,10 +86,15 @@ Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz un
 ## Feeds abrufen
 
 ```bash
-# Feed-URLs als Argumente und/oder aus einer Datei (eine URL pro Zeile, # für Kommentare)
+# Alle aktivierten, gespeicherten Feeds (siehe /api/feeds) abrufen
+.venv/bin/python -m ai_radar.ingest --db ai-radar.db
+
+# Oder einzelne Feed-URLs als Argumente und/oder aus einer Datei (eine URL pro Zeile, # für Kommentare)
 .venv/bin/python -m ai_radar.ingest --db ai-radar.db https://example.com/feed.xml
 .venv/bin/python -m ai_radar.ingest --db ai-radar.db --feeds-file feeds.txt
 ```
+
+Beim Abruf gespeicherter Feeds werden deaktivierte Feeds übersprungen; pro Feed werden Zeitpunkt des letzten Abrufs und des letzten Erfolgs sowie die letzte Fehlermeldung gespeichert, und neue Artikel werden mit ihrem Feed verknüpft. Beim Abruf über URL-Argumente bleiben gespeicherte Feeds unverändert.
 
 Abgerufen werden nur öffentliche `http`/`https`-Adressen (SSRF-Schutz, siehe [Architektur](docs/architecture.md)). Fehlerhafte Feeds werden gemeldet, ohne die übrigen zu blockieren; der Exit-Code ist dann `1`.
 

@@ -57,7 +57,22 @@ CREATE TABLE feeds (
 )
 """
 
-MIGRATIONS: tuple[Migration, ...] = ((_V1_ARTICLES,), (_V2_FEEDS,))
+# Per-feed fetch status, and the feed each new article came from. Articles
+# collected before this migration keep feed_id NULL. There is no foreign key
+# (not enforced without PRAGMA foreign_keys); FeedRepository.remove clears it.
+_V3_FEED_STATUS: Migration = (
+    "ALTER TABLE feeds ADD COLUMN last_fetched_at TEXT",
+    "ALTER TABLE feeds ADD COLUMN last_success_at TEXT",
+    "ALTER TABLE feeds ADD COLUMN last_error TEXT",
+    "ALTER TABLE articles ADD COLUMN feed_id INTEGER",
+    "CREATE INDEX articles_feed_id ON articles (feed_id)",
+)
+
+MIGRATIONS: tuple[Migration, ...] = (
+    (_V1_ARTICLES,),
+    (_V2_FEEDS,),
+    _V3_FEED_STATUS,
+)
 
 SCHEMA_VERSION = len(MIGRATIONS)
 

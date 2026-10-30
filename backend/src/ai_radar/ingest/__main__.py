@@ -1,4 +1,8 @@
-"""Command-line entry point: ``python -m ai_radar.ingest --db PATH [URL ...]``."""
+"""Command-line entry point: ``python -m ai_radar.ingest --db PATH [URL ...]``.
+
+Without URLs or ``--feeds-file`` the enabled feeds stored in the database are
+ingested and their fetch status is recorded.
+"""
 
 import argparse
 import logging
@@ -10,8 +14,9 @@ from pathlib import Path
 
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import open_database
+from ai_radar.feeds.repository import FeedRepository
 from ai_radar.ingest.fetch import create_client, fetch_feed
-from ai_radar.ingest.service import Fetcher, ingest_feeds
+from ai_radar.ingest.service import Fetcher, ingest_feeds, ingest_stored_feeds
 
 
 def read_feed_list(path: Path) -> list[str]:
@@ -30,7 +35,9 @@ def main(argv: Sequence[str] | None = None, fetch: Fetcher | None = None) -> int
     parser.add_argument(
         "--feeds-file", type=Path, help="file with one feed URL per line"
     )
-    parser.add_argument("urls", nargs="*", metavar="URL", help="feed URL")
+    parser.add_argument(
+        "urls", nargs="*", metavar="URL", help="feed URL (default: stored feeds)"
+    )
     args = parser.parse_args(argv)
 
     urls = list(args.urls)
@@ -39,9 +46,9 @@ def main(argv: Sequence[str] | None = None, fetch: Fetcher | None = None) -> int
             urls.extend(read_feed_list(args.feeds_file))
         except (OSError, UnicodeDecodeError) as exc:
             parser.error(f"cannot read feeds file: {exc}")
+        if not urls:
+            parser.error("no feed URLs given")
     urls = list(dict.fromkeys(urls))  # drop repeats, keep order
-    if not urls:
-        parser.error("no feed URLs given")
     if not args.db.parent.is_dir():
         parser.error(f"database directory does not exist: {args.db.parent}")
 
@@ -51,8 +58,14 @@ def main(argv: Sequence[str] | None = None, fetch: Fetcher | None = None) -> int
         if fetch is None:
             client = stack.enter_context(create_client())
             fetch = partial(fetch_feed, client=client)
-        results = ingest_feeds(urls, fetch, ArticleRepository(conn))
+        articles = ArticleRepository(conn)
+        if urls:
+            results = ingest_feeds(urls, fetch, articles)
+        else:
+            results = ingest_stored_feeds(FeedRepository(conn), fetch, articles)
 
+    if not results:
+        print("No enabled feeds stored.")
     for result in results:
         if result.ok:
             print(

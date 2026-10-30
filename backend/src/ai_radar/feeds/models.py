@@ -26,3 +26,6 @@ class Feed:
     fetch_full_text: bool
     created_at: datetime
     updated_at: datetime
+    last_fetched_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_error: str | None = None  # safe message of the last failed fetch

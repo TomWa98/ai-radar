@@ -22,6 +22,7 @@ class NewArticle:
     content: str | None
     published_at: datetime | None
     collected_at: datetime
+    feed_id: int | None = None  # None for articles not collected from a stored feed
 
     def __post_init__(self) -> None:
         for name in ("published_at", "collected_at"):
@@ -44,3 +45,4 @@ class Article:
     published_at: datetime | None
     collected_at: datetime
     status: ArticleStatus
+    feed_id: int | None
