@@ -2,6 +2,7 @@ import { fill } from "../i18n/dictionaries";
 import { useLanguage } from "../i18n/language";
 import type { Article } from "./api";
 import { categoryLabel } from "./categories";
+import { FeedbackControls } from "./FeedbackControls";
 import { formatDateTime, plainText, safeHref } from "./format";
 
 interface Props {
@@ -97,6 +98,12 @@ export function ArticleCard({ article, lead = false }: Props) {
           )}
         </>
       )}
+
+      <FeedbackControls
+        articleId={article.id}
+        feedback={article.feedback}
+        describedBy={titleId}
+      />
     </article>
   );
 }

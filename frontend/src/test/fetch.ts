@@ -4,9 +4,13 @@ import { vi } from "vitest";
 export interface Call {
   url: string;
   method: string;
+  body?: string;
 }
 
-export type Route = (url: URL) => Response | Promise<Response> | undefined;
+export type Route = (
+  url: URL,
+  init?: RequestInit,
+) => Response | Promise<Response> | undefined;
 
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -33,10 +37,11 @@ export function stubApi(...routes: Route[]): Call[] {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const raw = String(input);
-      calls.push({ url: raw, method: init?.method ?? "GET" });
+      const body = typeof init?.body === "string" ? init.body : undefined;
+      calls.push({ url: raw, method: init?.method ?? "GET", body });
       const url = new URL(raw, "http://127.0.0.1");
       for (const route of routes) {
-        const response = await route(url);
+        const response = await route(url, init);
         if (response) return response;
       }
       if (url.pathname === "/health") return json({ status: "ok" });

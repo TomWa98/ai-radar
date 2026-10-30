@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/client";
 import { analysis, article, page } from "../test/articles";
 import { stubApi, json } from "../test/fetch";
-import { fetchArticles, parseArticlePage } from "./api";
+import { clearFeedback, fetchArticles, parseArticlePage, setFeedback } from "./api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -87,5 +87,60 @@ describe("fetchArticles", () => {
     await fetchArticles({ lang: "en", q: "", limit: 25, offset: 0 });
 
     expect(calls[0]?.url).toBe("/api/articles?lang=en&limit=25");
+  });
+});
+
+describe("feedback", () => {
+  it("parses the stored feedback of an article", () => {
+    const parsed = parseArticlePage(
+      page([article({ id: 1, feedback: "relevant" }), article({ id: 2, feedback: null })]),
+    );
+
+    expect(parsed.items.map((item) => item.feedback)).toEqual(["relevant", null]);
+  });
+
+  it("rejects an unknown feedback value", () => {
+    expect(() => parseArticlePage(page([article({ feedback: "maybe" })]))).toThrow(ApiError);
+  });
+
+  it("stores a rating and returns the stored rating", async () => {
+    const calls = stubApi((url) =>
+      url.pathname === "/api/articles/3/feedback"
+        ? json({
+            article_id: 3,
+            rating: "irrelevant",
+            created_at: "2026-10-30T12:00:00Z",
+            updated_at: "2026-10-30T12:00:00Z",
+          })
+        : undefined,
+    );
+
+    await expect(setFeedback(3, "irrelevant")).resolves.toBe("irrelevant");
+    expect(calls).toEqual([
+      {
+        url: "/api/articles/3/feedback",
+        method: "PUT",
+        body: JSON.stringify({ rating: "irrelevant" }),
+      },
+    ]);
+  });
+
+  it("rejects an unexpected feedback response", async () => {
+    stubApi((url) =>
+      url.pathname === "/api/articles/3/feedback"
+        ? json({ article_id: 4, rating: "relevant" })
+        : undefined,
+    );
+
+    await expect(setFeedback(3, "relevant")).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it("removes feedback", async () => {
+    const calls = stubApi((url) =>
+      url.pathname === "/api/articles/3/feedback" ? new Response(null, { status: 204 }) : undefined,
+    );
+
+    await expect(clearFeedback(3)).resolves.toBeUndefined();
+    expect(calls).toEqual([{ url: "/api/articles/3/feedback", method: "DELETE", body: undefined }]);
   });
 });

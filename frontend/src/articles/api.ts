@@ -1,13 +1,17 @@
-import { ApiError, apiGet } from "../api/client";
+import { ApiError, apiGet, apiSend } from "../api/client";
 import type { Language } from "../i18n/dictionaries";
 
-/** Types and client for `GET /api/articles` (backend #21/#22). */
+/**
+ * Types and client for `GET /api/articles` (backend #21/#22) and article
+ * feedback, `/api/articles/{id}/feedback` (backend #19).
+ */
 
 export const CATEGORIES = ["Releases", "Features", "Security", "Use Cases", "Other"] as const;
 export type Category = (typeof CATEGORIES)[number];
 export type SortOrder = "recent" | "relevance";
 export type ArticleStatus = "new" | "processing" | "analyzed" | "failed";
 export type AnalysisBasis = "full_text" | "excerpt";
+export type Rating = "relevant" | "irrelevant";
 
 export interface Analysis {
   primaryCategory: Category;
@@ -31,6 +35,8 @@ export interface Article {
   collectedAt: string;
   status: ArticleStatus;
   analysis: Analysis | null;
+  /** The stored relevance feedback, if any (FR-15). */
+  feedback: Rating | null;
 }
 
 export interface ArticlePage {
@@ -106,6 +112,10 @@ function parseAnalysis(value: unknown): Analysis | null {
 
 const STATUSES: readonly unknown[] = ["new", "processing", "analyzed", "failed"];
 
+function isRating(value: unknown): value is Rating {
+  return value === "relevant" || value === "irrelevant";
+}
+
 function parseArticle(value: unknown): Article {
   if (
     !isObject(value) ||
@@ -116,7 +126,8 @@ function parseArticle(value: unknown): Article {
     !(value.excerpt === null || isString(value.excerpt)) ||
     !(value.published_at === null || isString(value.published_at)) ||
     !isString(value.collected_at) ||
-    !STATUSES.includes(value.status)
+    !STATUSES.includes(value.status) ||
+    !(value.feedback === null || isRating(value.feedback))
   ) {
     return invalid();
   }
@@ -130,6 +141,7 @@ function parseArticle(value: unknown): Article {
     collectedAt: value.collected_at,
     status: value.status as ArticleStatus,
     analysis: parseAnalysis(value.analysis),
+    feedback: value.feedback,
   };
 }
 
@@ -169,4 +181,18 @@ export async function fetchArticles(
     },
   });
   return parseArticlePage(body);
+}
+
+/** Store `rating` for an article; resolves to the rating the API stored. */
+export async function setFeedback(articleId: number, rating: Rating): Promise<Rating> {
+  const body = await apiSend("PUT", `/api/articles/${articleId}/feedback`, { rating });
+  if (!isObject(body) || body.article_id !== articleId || !isRating(body.rating)) {
+    return invalid();
+  }
+  return body.rating;
+}
+
+/** Remove the feedback for an article (idempotent in the API). */
+export async function clearFeedback(articleId: number): Promise<void> {
+  await apiSend("DELETE", `/api/articles/${articleId}/feedback`);
 }

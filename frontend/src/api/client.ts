@@ -51,17 +51,12 @@ export interface GetOptions {
   query?: QueryParams;
 }
 
-/** GET a JSON resource; throws {@link ApiError} for every failure. */
-export async function apiGet(path: string, options: GetOptions = {}): Promise<unknown> {
-  const { signal, query } = options;
+async function send(url: string, init: RequestInit): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(withQuery(path, query), {
-      headers: { Accept: "application/json" },
-      signal,
-    });
+    response = await fetch(url, init);
   } catch (error) {
-    if (signal?.aborted) {
+    if (init.signal?.aborted) {
       throw error; // cancelled by the caller, not a failure to report
     }
     throw new ApiError("Network error", null);
@@ -70,11 +65,47 @@ export async function apiGet(path: string, options: GetOptions = {}): Promise<un
     const detail = await errorDetail(response);
     throw new ApiError(detail ?? `HTTP ${response.status}`, response.status);
   }
+  return response;
+}
+
+async function readJson(response: Response): Promise<unknown> {
   try {
     return (await response.json()) as unknown;
   } catch {
     throw new ApiError("Invalid JSON response", response.status);
   }
+}
+
+/** GET a JSON resource; throws {@link ApiError} for every failure. */
+export async function apiGet(path: string, options: GetOptions = {}): Promise<unknown> {
+  const { signal, query } = options;
+  const response = await send(withQuery(path, query), {
+    headers: { Accept: "application/json" },
+    signal,
+  });
+  return readJson(response);
+}
+
+/**
+ * PUT or DELETE a resource, with an optional JSON `body`. Returns the JSON
+ * response, or `null` for `204 No Content`; throws {@link ApiError} for
+ * every failure.
+ */
+export async function apiSend(
+  method: "PUT" | "DELETE",
+  path: string,
+  body?: unknown,
+): Promise<unknown> {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+  const response = await send(path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return response.status === 204 ? null : readJson(response);
 }
 
 export interface Health {
