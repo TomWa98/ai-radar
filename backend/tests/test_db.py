@@ -207,11 +207,19 @@ def test_populated_v1_database_is_migrated_without_losing_articles(
 ) -> None:
     path = tmp_path / "test.db"
     migrate(path, MIGRATIONS[:1])
+    assert schema_version(path) == 1
     with closing(connect(path)) as conn:
-        assert schema_version(path) == 1
-        repository = ArticleRepository(conn)
-        first = repository.add(make_article("https://example.com/a"))
-        second = repository.add(make_article("https://example.com/b"))
+        # Raw v1 rows: the repository always targets the latest schema.
+        for url in ("https://example.com/a", "https://example.com/b"):
+            conn.execute(
+                """
+                INSERT INTO articles
+                    (source, url, normalized_url, title, content, collected_at)
+                VALUES ('Example Feed', ?, ?, 'Example headline', 'Text',
+                        '2026-10-30T12:00:00+00:00')
+                """,
+                (url, url),
+            )
 
     migrate(path, WITH_TEST)
 
@@ -219,8 +227,19 @@ def test_populated_v1_database_is_migrated_without_losing_articles(
     assert "feeds" in table_names(path)
     with closing(connect(path)) as conn:
         repository = ArticleRepository(conn)
-        assert first is not None and repository.get_by_id(first.id) == first
-        assert second is not None and repository.get_by_id(second.id) == second
+        for article_id, url in (
+            (1, "https://example.com/a"),
+            (2, "https://example.com/b"),
+        ):
+            article = repository.get_by_id(article_id)
+            assert article is not None
+            assert (article.url, article.title, article.content) == (
+                url,
+                "Example headline",
+                "Text",
+            )
+            assert article.collected_at == datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
+            assert article.feed_id is None
         row = fetch_one(conn, "SELECT test_extra_id FROM articles LIMIT 1")
         assert row is not None and row[0] is None
 

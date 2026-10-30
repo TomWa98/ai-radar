@@ -29,6 +29,7 @@ def _row_to_article(row: sqlite3.Row) -> Article:
         published_at=_from_db(row["published_at"]),
         collected_at=collected_at,
         status=ArticleStatus(row["status"]),
+        feed_id=row["feed_id"],
     )
 
 
@@ -48,8 +49,8 @@ class ArticleRepository:
                 """
                 INSERT INTO articles
                     (source, url, normalized_url, title, content,
-                     published_at, collected_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                     published_at, collected_at, feed_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (normalized_url) DO NOTHING
                 RETURNING *
                 """,
@@ -61,6 +62,7 @@ class ArticleRepository:
                     article.content,
                     _to_db(article.published_at),
                     _to_db(article.collected_at),
+                    article.feed_id,
                 ),
             )
         return None if row is None else _row_to_article(row)

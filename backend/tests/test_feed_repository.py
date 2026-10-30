@@ -207,6 +207,57 @@ def test_remove_keeps_articles(conn: sqlite3.Connection, repo: FeedRepository) -
     assert articles.get_by_id(article.id) == article
 
 
+def test_remove_clears_feed_link_of_articles(
+    conn: sqlite3.Connection, repo: FeedRepository
+) -> None:
+    feed = repo.add(NewFeed(url="https://example.com/rss"))
+    other = repo.add(NewFeed(url="https://other.example/rss"))
+    articles = ArticleRepository(conn)
+
+    def add_article(url: str, feed_id: int) -> int:
+        article = articles.add(
+            NewArticle(
+                source="Example",
+                url=url,
+                title="Post",
+                content=None,
+                published_at=None,
+                collected_at=CREATED_AT,
+                feed_id=feed_id,
+            )
+        )
+        assert article is not None and article.feed_id == feed_id
+        return article.id
+
+    removed_id = add_article("https://example.com/posts/1", feed.id)
+    kept_id = add_article("https://other.example/posts/1", other.id)
+
+    repo.remove(feed.id)
+
+    removed_article = articles.get_by_id(removed_id)
+    kept_article = articles.get_by_id(kept_id)
+    assert removed_article is not None and removed_article.feed_id is None
+    assert kept_article is not None and kept_article.feed_id == other.id
+
+
+def test_new_feed_has_no_fetch_status(repo: FeedRepository) -> None:
+    feed = repo.add(NewFeed(url="https://example.com/rss"))
+
+    assert (feed.last_fetched_at, feed.last_success_at, feed.last_error) == (
+        None,
+        None,
+        None,
+    )
+
+
+def test_list_enabled_skips_disabled_feeds(repo: FeedRepository) -> None:
+    first = repo.add(NewFeed(url="https://a.example/rss"))
+    repo.add(NewFeed(url="https://b.example/rss", enabled=False))
+    third = repo.add(NewFeed(url="https://c.example/rss"))
+
+    assert repo.list_enabled() == [first, third]
+
+
 def test_schema_rejects_non_boolean_flags(conn: sqlite3.Connection) -> None:
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute(

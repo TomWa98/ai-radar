@@ -22,8 +22,15 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+MAX_ERROR_LENGTH = 500
+
+
 def _to_db(value: datetime) -> str:
     return value.astimezone(UTC).isoformat()
+
+
+def _from_db(value: str | None) -> datetime | None:
+    return None if value is None else datetime.fromisoformat(value)
 
 
 def _row_to_feed(row: sqlite3.Row) -> Feed:
@@ -36,6 +43,9 @@ def _row_to_feed(row: sqlite3.Row) -> Feed:
         fetch_full_text=bool(row["fetch_full_text"]),
         created_at=datetime.fromisoformat(row["created_at"]),
         updated_at=datetime.fromisoformat(row["updated_at"]),
+        last_fetched_at=_from_db(row["last_fetched_at"]),
+        last_success_at=_from_db(row["last_success_at"]),
+        last_error=row["last_error"],
     )
 
 
@@ -91,6 +101,37 @@ class FeedRepository:
         rows = self._conn.execute("SELECT * FROM feeds ORDER BY id").fetchall()
         return [_row_to_feed(row) for row in rows]
 
+    def list_enabled(self) -> list[Feed]:
+        rows = self._conn.execute(
+            "SELECT * FROM feeds WHERE enabled = 1 ORDER BY id"
+        ).fetchall()
+        return [_row_to_feed(row) for row in rows]
+
+    def record_fetch(
+        self, feed_id: int, fetched_at: datetime, error: str | None = None
+    ) -> None:
+        """Store the outcome of a fetch: success if ``error`` is ``None``.
+
+        ``error`` must already be safe to show; it is truncated to
+        ``MAX_ERROR_LENGTH`` characters. A success clears the previous error.
+        """
+        fetched = _to_db(fetched_at)
+        with transaction(self._conn):
+            if error is None:
+                self._conn.execute(
+                    """
+                    UPDATE feeds
+                    SET last_fetched_at = ?, last_success_at = ?, last_error = NULL
+                    WHERE id = ?
+                    """,
+                    (fetched, fetched, feed_id),
+                )
+            else:
+                self._conn.execute(
+                    "UPDATE feeds SET last_fetched_at = ?, last_error = ? WHERE id = ?",
+                    (fetched, error[:MAX_ERROR_LENGTH], feed_id),
+                )
+
     def update(self, feed_id: int, feed: NewFeed) -> Feed | None:
         """Replace the editable fields of a feed; return ``None`` if it is unknown.
 
@@ -130,9 +171,12 @@ class FeedRepository:
     def remove(self, feed_id: int) -> bool:
         """Delete a feed; return ``False`` if it is unknown.
 
-        Articles collected from the feed are kept.
+        Articles collected from the feed are kept; their ``feed_id`` is cleared.
         """
         with transaction(self._conn):
+            self._conn.execute(
+                "UPDATE articles SET feed_id = NULL WHERE feed_id = ?", (feed_id,)
+            )
             row = fetch_one(
                 self._conn, "DELETE FROM feeds WHERE id = ? RETURNING id", (feed_id,)
             )
