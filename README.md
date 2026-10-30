@@ -109,6 +109,22 @@ curl -X POST http://127.0.0.1:8000/api/feeds \
 
 Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz und ist nur für `127.0.0.1` vorgesehen (D9); Anfragen mit einem anderen `Host`-Header als `127.0.0.1` oder `localhost` werden mit `400` abgelehnt (Schutz vor DNS-Rebinding).
 
+## Artikel abfragen (API)
+
+`GET /api/articles` liefert Artikel mit ihrer neuesten Analyse:
+
+| Parameter | Bedeutung |
+|---|---|
+| `lang` | `de` (Standard) oder `en` – Sprache von Zusammenfassung und Begründung; Kategorien und Scores sind sprachunabhängig |
+| `category` | `Releases`, `Features`, `Security`, `Use Cases`, `Other` (Haupt- oder Nebenkategorie) |
+| `min_relevance` | Mindest-Relevanz 1–5 |
+| `published_from`, `published_to` | Zeitraum (ISO 8601 mit Zeitzone; ohne Veröffentlichungsdatum gilt der Abrufzeitpunkt) |
+| `sort` | `recent` (Standard) oder `relevance` (nicht analysierte Artikel zuletzt) |
+| `limit`, `offset` | Seite (`limit` 1–100, Standard 50) |
+| `since` | nur Artikel, die sich danach geändert haben (neu, analysiert, Analyseversuch, Feedback) |
+
+Die Antwort enthält `items`, `total` und `next_since`; für Polling `next_since` als nächstes `since` übergeben (kleine Überlappung, Artikel können doppelt kommen). Nicht analysierte Artikel erscheinen mit ihrem Status. Titel, Auszug (`excerpt`, kann HTML enthalten), Zusammenfassung und Begründung sind nicht vertrauenswürdige Texte und müssen als Text dargestellt werden. Ungültige Parameter ergeben `422`.
+
 ## Interessen verwalten (API)
 
 | Methode | Pfad | Ergebnis |

@@ -144,11 +144,20 @@ class ArticleRepository:
             ).fetchall()
         return sorted((_row_to_article(row) for row in rows), key=lambda a: a.id)
 
-    def mark_analyzed(self, article_id: int) -> None:
-        self._finish_attempt(article_id, ArticleStatus.ANALYZED, None)
+    def mark_analyzed(
+        self, article_id: int, *, finished_at: datetime | None = None
+    ) -> None:
+        self._finish_attempt(
+            article_id, ArticleStatus.ANALYZED, None, finished_at=finished_at
+        )
 
     def mark_failed(
-        self, article_id: int, error: str, *, count_attempt: bool = True
+        self,
+        article_id: int,
+        error: str,
+        *,
+        count_attempt: bool = True,
+        finished_at: datetime | None = None,
     ) -> None:
         """Record a failure; ``error`` must already be safe to show.
 
@@ -160,6 +169,7 @@ class ArticleRepository:
             ArticleStatus.FAILED,
             error[:MAX_ANALYSIS_ERROR_LENGTH],
             count_attempt=count_attempt,
+            finished_at=finished_at,
         )
 
     def reset_interrupted(self) -> int:
@@ -180,14 +190,19 @@ class ArticleRepository:
         error: str | None,
         *,
         count_attempt: bool = True,
+        finished_at: datetime | None = None,
     ) -> None:
+        # analysis_attempted_at moves to the end of the attempt, so polling
+        # clients (``since``) see the status change.
+        finished = _to_db(finished_at or datetime.now(UTC))
         with transaction(self._conn):
             self._conn.execute(
                 """
                 UPDATE articles
                 SET status = ?, analysis_error = ?,
-                    analysis_attempts = analysis_attempts + ?
+                    analysis_attempts = analysis_attempts + ?,
+                    analysis_attempted_at = ?
                 WHERE id = ? AND status = 'processing'
                 """,
-                (status, error, 1 if count_attempt else 0, article_id),
+                (status, error, 1 if count_attempt else 0, finished, article_id),
             )
