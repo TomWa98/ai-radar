@@ -32,6 +32,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from ai_radar.analysis.pipeline import AnalysisSettings
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import open_database
+from ai_radar.feedback.api import router as feedback_router
 from ai_radar.feeds.api import router as feeds_router
 from ai_radar.ingest.api import router as refresh_router
 from ai_radar.ingest.scheduler import (
@@ -84,6 +85,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 app.include_router(feeds_router)
 app.include_router(refresh_router)
 app.include_router(interests_router)
+app.include_router(feedback_router)
 
 
 @app.get("/health")

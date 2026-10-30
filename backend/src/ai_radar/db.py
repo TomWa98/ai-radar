@@ -153,6 +153,17 @@ CREATE TABLE interests (
 )
 """
 
+# Relevance feedback (FR-15): at most one rating per article. Feedback never
+# changes stored analyses; preferences are derived from it separately (D6).
+_V9_FEEDBACK = """
+CREATE TABLE article_feedback (
+    article_id INTEGER PRIMARY KEY,
+    rating     TEXT NOT NULL CHECK (rating IN ('relevant', 'irrelevant')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+)
+"""
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
@@ -162,6 +173,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _V6_ANALYSIS_STATUS,
     _V7_LLM_CALLS,
     (_V8_INTERESTS,),
+    (_V9_FEEDBACK,),
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

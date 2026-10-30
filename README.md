@@ -120,6 +120,15 @@ Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz un
 
 Themen werden von überflüssigen Leerzeichen bereinigt (max. 100 Zeichen, keine Steuerzeichen). Manuelle Interessen ändert nur der Nutzer; sie werden nie automatisch angepasst. Gelernte Präferenzen werden getrennt geführt.
 
+## Relevanzfeedback (API)
+
+| Methode | Pfad | Ergebnis |
+|---|---|---|
+| `PUT` | `/api/articles/{id}/feedback` | Bewertung setzen oder ändern (`{"rating": "relevant"}` bzw. `"irrelevant"`) → `200`; unbekannter Artikel `404` |
+| `DELETE` | `/api/articles/{id}/feedback` | Bewertung entfernen → `204` (auch wenn keine vorhanden war); unbekannter Artikel `404` |
+
+Pro Artikel gibt es höchstens eine Bewertung. Feedback ändert keine bestehenden Analysen.
+
 ## Feeds abrufen
 
 ```bash
