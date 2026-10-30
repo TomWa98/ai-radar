@@ -19,7 +19,15 @@ describe("routeFromHash", () => {
   });
 
   it("returns null when nothing is available", () => {
-    expect(routeFromHash("#/overview", NAV_ITEMS)).toBeNull();
+    const none = ITEMS.map((item) => ({ ...item, available: false }));
+    expect(routeFromHash("#/overview", none)).toBeNull();
+  });
+
+  it("makes only Overview available so far", () => {
+    expect(NAV_ITEMS.filter((item) => item.available).map((item) => item.id)).toEqual([
+      "overview",
+    ]);
+    expect(routeFromHash("", NAV_ITEMS)).toBe("overview");
   });
 });
 
