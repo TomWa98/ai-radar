@@ -31,11 +31,35 @@ async function errorDetail(response: Response): Promise<string | null> {
   return null;
 }
 
+export type QueryParams = Readonly<Record<string, string | number | undefined>>;
+
+/** `path` with the defined `query` values appended (URL-encoded). */
+export function withQuery(path: string, query?: QueryParams): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query ?? {})) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const search = params.toString();
+  return search ? `${path}?${search}` : path;
+}
+
+export interface GetOptions {
+  signal?: AbortSignal;
+  /** Query parameters; language-dependent endpoints get `lang` (FR-35). */
+  query?: QueryParams;
+}
+
 /** GET a JSON resource; throws {@link ApiError} for every failure. */
-export async function apiGet(path: string, signal?: AbortSignal): Promise<unknown> {
+export async function apiGet(path: string, options: GetOptions = {}): Promise<unknown> {
+  const { signal, query } = options;
   let response: Response;
   try {
-    response = await fetch(path, { headers: { Accept: "application/json" }, signal });
+    response = await fetch(withQuery(path, query), {
+      headers: { Accept: "application/json" },
+      signal,
+    });
   } catch (error) {
     if (signal?.aborted) {
       throw error; // cancelled by the caller, not a failure to report
@@ -58,7 +82,7 @@ export interface Health {
 }
 
 export async function getHealth(signal?: AbortSignal): Promise<Health> {
-  const body = await apiGet("/health", signal);
+  const body = await apiGet("/health", { signal });
   if (
     typeof body !== "object" ||
     body === null ||

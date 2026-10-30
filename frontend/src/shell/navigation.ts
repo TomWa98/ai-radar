@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { strings } from "../strings";
+import type { Dictionary } from "../i18n/dictionaries";
 
 /**
  * Hash navigation (D8: no router library). Destinations that are not
@@ -10,15 +10,15 @@ export type RouteId = "overview" | "interests" | "sources" | "news-wall";
 
 export interface NavItem {
   id: RouteId;
-  label: string;
+  labelKey: keyof Dictionary["nav"];
   available: boolean;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { id: "overview", label: strings.nav.overview, available: false },
-  { id: "interests", label: strings.nav.interests, available: false },
-  { id: "sources", label: strings.nav.sources, available: false },
-  { id: "news-wall", label: strings.nav.newsWall, available: false },
+  { id: "overview", labelKey: "overview", available: false },
+  { id: "interests", labelKey: "interests", available: false },
+  { id: "sources", labelKey: "sources", available: false },
+  { id: "news-wall", labelKey: "newsWall", available: false },
 ];
 
 export function hrefFor(id: RouteId): string {

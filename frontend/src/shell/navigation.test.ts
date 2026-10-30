@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, hrefFor, routeFromHash, type NavItem } from "./navigation";
 
 const ITEMS: NavItem[] = [
-  { id: "overview", label: "Overview", available: true },
-  { id: "interests", label: "Interests", available: true },
-  { id: "sources", label: "Sources", available: false },
+  { id: "overview", labelKey: "overview", available: true },
+  { id: "interests", labelKey: "interests", available: true },
+  { id: "sources", labelKey: "sources", available: false },
 ];
 
 describe("routeFromHash", () => {

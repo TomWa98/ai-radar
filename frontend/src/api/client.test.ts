@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiGet, getHealth } from "./client";
+import { ApiError, apiGet, getHealth, withQuery } from "./client";
 
 function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
   const fetchMock = vi.fn(impl);
@@ -84,6 +84,28 @@ describe("apiGet errors", () => {
       throw abort;
     });
 
-    await expect(apiGet("/health", controller.signal)).rejects.toBe(abort);
+    await expect(apiGet("/health", { signal: controller.signal })).rejects.toBe(abort);
+  });
+});
+
+describe("withQuery", () => {
+  it("appends defined parameters URL-encoded", () => {
+    expect(withQuery("/api/articles", { lang: "de", q: "a&b c", limit: 20 })).toBe(
+      "/api/articles?lang=de&q=a%26b+c&limit=20",
+    );
+  });
+
+  it("skips undefined values and empty queries", () => {
+    expect(withQuery("/api/articles", { lang: "en", q: undefined })).toBe(
+      "/api/articles?lang=en",
+    );
+    expect(withQuery("/health")).toBe("/health");
+    expect(withQuery("/health", {})).toBe("/health");
+  });
+
+  it("is used by apiGet", async () => {
+    const fetchMock = mockFetch(async () => json({}));
+    await apiGet("/api/articles", { query: { lang: "en" } });
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/articles?lang=en");
   });
 });
