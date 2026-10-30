@@ -4,7 +4,8 @@
 **Applies to:** All current and future frontend implementation issues  
 **Design language:** Silver / Monochrome · Dark mode · Intelligence × Editorial  
 **Primary layout:** Editorial Grid  
-**Information density:** Balanced
+**Information density:** Balanced  
+**Binding decisions:** 1–8 of 2026-10-30, incorporated below and listed in section 11
 
 ## 1. Product and design goals
 
@@ -25,7 +26,7 @@ Priorities: readability, relevance, information hierarchy, restrained visual lan
 | `--color-bg` | `#0C0D10` | Application background |
 | `--color-surface` | `#1C1F24` | Cards, panels |
 | `--color-surface-hover` | `#252A31` | Hovered cards and navigation |
-| `--color-border` | `#2A2D33` | Subtle separators and outlines |
+| `--color-border` | `#2A2D33` | Decorative separators only (see 2.1 note) |
 | `--color-text-primary` | `#F3F4F6` | Headlines, key information |
 | `--color-text-secondary` | `#9AA3AE` | Descriptions, timestamps, metadata |
 | `--color-accent` | `#D5D9DF` | Active navigation, selection, primary actions |
@@ -35,9 +36,11 @@ Use a predominantly monochromatic interface. The silver accent is not a reason t
 
 Ensure text/background contrast meets WCAG AA where applicable. Adjust secondary text or surfaces if measured contrast falls short.
 
+**Interactive boundaries (binding, decision 8):** Boundaries that identify interactive UI components — e.g. input and select outlines, button borders, toggles, checkboxes — and focus indicators must meet WCAG 2.1 SC 1.4.11 (at least 3:1 against adjacent colors). `--color-border` (`#2A2D33`, about 1.2:1 on `--color-surface`) is only for decorative separators and card outlines; interactive boundaries need a separate, sufficiently contrasting token. `--color-focus` meets this (about 11.7:1 on `--color-surface`).
+
 ### 2.2 Typography and spacing
 
-- Use **Inter** or **Geist** (choose one and apply consistently). Provide system sans-serif fallback; do not make font download a runtime requirement.
+- **Font stack (binding, decision 2):** system font stack with Inter/Geist only as optional *locally installed* fonts, e.g. `font-family: Inter, Geist, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;`. No font files, no font package or other new dependency, no font download.
 - Clear hierarchy: page title, section title, article headline, summary, metadata.
 - Article headlines should be readable without oversized typography. Summaries use comfortable line height.
 - Use a consistent spacing scale (4/8/12/16/24/32 px), rather than arbitrary values.
@@ -58,6 +61,10 @@ Primary desktop navigation uses a persistent left sidebar. The exact labels shou
 A restrained top bar contains the product identity and relevant status/actions (e.g., last successful refresh, settings if implemented). Do not show invented system metrics or fake live status.
 
 If a destination is not implemented yet, do not present it as a functional control. Either hide it until available or show a clearly disabled state, consistent with the existing issue scope.
+
+**Binding decisions:**
+- **Overview / Articles (decision 3):** The dashboard issue (#25) implements **Overview** as the Editorial Grid with search, filters, and sorting. **Articles** stays hidden until an issue covers it; no additional view is created.
+- **Refresh status in the top bar (decision 6):** Label it **„Letzter abgeschlossener Abruf“ / “Last completed refresh”**, not “last successful refresh”, as long as the API provides no reliable success status (currently only `last_started_at`/`last_finished_at` from `GET /api/refresh`).
 
 ## 4. Dashboard: Editorial Grid
 
@@ -82,6 +89,7 @@ Use only fields actually available in the API. Where available, show:
 - Publication time, with clear fallback for missing timestamps.
 - AI-generated summary, visibly distinguished from original publisher content.
 - Relevance score and/or general importance, clearly labeled and not conflated.
+- **Analysis basis (binding, decision 7, FR-07):** whether the analysis is based on the full text or the feed excerpt must be visible for every article that has an analysis.
 - Link to original article.
 - Feedback controls when supported by the current feature.
 
@@ -105,6 +113,7 @@ The News Wall is a **separate full-screen presentation mode**, not the dashboard
 - Asymmetric editorial layout: a prominent top story plus supporting cards, within a maximum of nine visible cards if consistent with the approved architecture.
 - Auto-rotation and refresh follow the timing/selection rules already documented in `docs/architecture.md` and `docs/requirements.md`; do not redefine those rules in the visual spec.
 - Display only grounded data; show an intentional empty/offline state when needed.
+- **Settings (binding, decision 5):** wall settings (e.g. the minimum relevance score) are reached through a discreet, dismissible overlay. In normal operation no controls are visible; the overlay must still be keyboard-accessible and must not stay visible permanently.
 - Provide discreet but accessible controls to exit or pause the wall if these are in scope.
 - Avoid layout jumps and distracting transitions. Support reduced motion.
 - Time/status indicators must be truthful; no simulated 'live' indicator.
@@ -132,7 +141,7 @@ The News Wall is a **separate full-screen presentation mode**, not the dashboard
 - Use reusable design tokens and components for cards, buttons, inputs, navigation and status states.
 - Avoid adding a UI component framework, icon package, animation package, or other dependency without checking existing decisions and the issue scope.
 - Respect the existing API contracts; do not invent backend endpoints.
-- Add appropriate component tests and accessibility checks for implemented interactions.
+- Add appropriate component tests and accessibility checks for implemented interactions. **Accessibility checks (binding, decision 4)** use the existing Testing Library tools (role/name queries), semantic HTML, and keyboard and focus tests; no additional accessibility dependency (e.g. axe).
 - Frontend changes should be reviewable in small, issue-scoped PRs.
 - This document controls **visual/interaction design**, not functional scope. If it conflicts with accepted functional requirements or architecture decisions, surface the conflict for review rather than silently overriding them.
 
@@ -150,9 +159,24 @@ The News Wall is a **separate full-screen presentation mode**, not the dashboard
 
 ## 10. Implementation sequence
 
-1. Establish global tokens, typography, responsive shell and navigation as part of the frontend foundation issue.
+1. Establish global tokens, typography, responsive shell and sidebar navigation as part of the frontend foundation issue **#23** (decision 1) — without any functional views.
 2. Build data-driven article cards and Editorial Grid in the dashboard issue.
 3. Add filter/search/feedback interactions as their respective issues permit.
 4. Build the dedicated News Wall under its own issue.
 
 Do not implement all four steps in one PR. Each autonomous feature run should remain scoped to one GitHub issue.
+
+## 11. Binding decisions (2026-10-30)
+
+Decided by the project owner after the conflict review of this specification. They are incorporated in the sections above and reflected in the affected issues.
+
+| # | Decision | Section / issue |
+|---|---|---|
+| 1 | #23 additionally covers design tokens, typography, responsive app shell, and sidebar navigation; no functional views. | 10, #23 |
+| 2 | System font stack with Inter/Geist as optional local fonts and `system-ui` fallback; no new dependency, no font download. | 2.2, #23 |
+| 3 | #25 first implements “Overview” as the Editorial Grid with search, filters, and sorting; “Articles” stays hidden; no new view. | 3, #25 |
+| 4 | Accessibility checks with existing Testing Library means, semantic HTML, keyboard and focus tests; no new dependency. | 8, all frontend issues |
+| 5 | News Wall settings via a discreet, dismissible overlay; no visible controls in normal operation. | 5, #29 |
+| 6 | Top bar shows “Letzter abgeschlossener Abruf” instead of “Letzter erfolgreicher Abruf” as long as the API provides no reliable success status. | 3, #28 |
+| 7 | #25 uses the Editorial Grid; the analysis basis (FR-07) must be visible for articles. | 4.2, #25 |
+| 8 | Interactive UI boundaries meet WCAG 1.4.11; decorative separators may be subtler. | 2.1, all frontend issues |
