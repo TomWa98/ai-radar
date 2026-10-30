@@ -50,6 +50,7 @@ Die Darstellung ist logisch: Module müssen nicht jeweils eigene Prozesse sein. 
 | Backend/API | Python + FastAPI | Python-basierte Verarbeitung und HTTP-Schnittstelle |
 | Frontend | React + TypeScript + Vite | Interaktives Dashboard ohne unnötiges SSR |
 | Persistenz | SQLite | Lokale, dateibasierte relationale Datenbank; kein separater DB-Server |
+| Datenbankzugriff | Python-Standardmodul `sqlite3`, kein ORM; Schemaversion über `PRAGMA user_version` | Keine zusätzliche Abhängigkeit, transparentes SQL; Zugriff gekapselt in Repository-Klassen, damit ein späterer Wechsel (z. B. SQLAlchemy/Alembic) lokal bleibt |
 | KI-Analyse | Externe LLM-API, zunächst OpenAI | Modellqualität ohne lokale Inferenz-Infrastruktur |
 | KI-Abstraktion | Austauschbare Analyzer-Schnittstelle | Anbieterwechsel und Tests ohne echte API-Aufrufe |
 | Hintergrundjobs | Einfacher Python-Scheduler, begrenzte Parallelität | Keine Redis-/Celery-Infrastruktur im MVP |
@@ -144,7 +145,7 @@ Bibliotheken für Feed-Parsing, HTTP-Abruf, Extraktion, ORM/Migrationen, Schedul
 ## 7. Bewusst noch nicht festgelegt
 
 - Konkrete Python-/Node-Versionen und Paketmanager.
-- Datenbankschema, Migrationsstrategie und ORM.
+- Vollständiges Datenbankschema und Migrationsablauf über Version 1 hinaus.
 - Feed-/Volltextextraktionsbibliotheken.
 - Scheduler-Bibliothek, Queue-Mechanik und Prozessmodell.
 - LLM-Modell, Prompt-Design, exakte Token-/Kostenlimits.
