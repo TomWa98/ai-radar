@@ -411,7 +411,7 @@ describe("polling", () => {
 });
 
 describe("keyboard", () => {
-  it("reaches search, filters, and article links in order", async () => {
+  it("reaches search, filters, article links, and feedback in order", async () => {
     vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
     const user = userEvent.setup();
     stubApi(articlesRoute(page([article({ id: 1 })], 30)));
@@ -432,6 +432,9 @@ describe("keyboard", () => {
       screen.getByLabelText("Sort by"),
       screen.getByRole("button", { name: "Reset filters" }),
       screen.getByRole("link", { name: /Headline 1/ }),
+      screen.getByRole("button", { name: "Relevant" }),
+      screen.getByRole("button", { name: "Not relevant" }),
+      screen.getByRole("button", { name: "Undo" }),
       screen.getByRole("button", { name: "Next page" }),
     ];
     for (const element of order) {

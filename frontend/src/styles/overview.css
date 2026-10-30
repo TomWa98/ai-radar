@@ -302,6 +302,59 @@
   margin-top: auto;
 }
 
+/* Relevance feedback: at the bottom of the card, below the analysis basis. */
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: auto;
+  padding-top: var(--space-2);
+}
+
+.card__basis + .feedback {
+  margin-top: 0;
+}
+
+.feedback__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.feedback__button[aria-pressed="true"] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.feedback__button[aria-pressed="true"]:hover:not([aria-disabled="true"]) {
+  background: var(--color-text-primary);
+}
+
+.feedback__button[aria-disabled="true"],
+.feedback__button[aria-disabled="true"]:hover {
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  cursor: not-allowed;
+}
+
+/* While saving, the chosen button keeps its pressed look. */
+.feedback__button[aria-pressed="true"][aria-disabled="true"],
+.feedback__button[aria-pressed="true"][aria-disabled="true"]:hover {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+.feedback__state,
+.feedback__error {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.feedback__error {
+  color: var(--color-text-primary);
+}
+
 .card__status {
   color: var(--color-text-primary);
 }

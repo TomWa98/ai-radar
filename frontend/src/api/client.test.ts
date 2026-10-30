@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiGet, getHealth, withQuery } from "./client";
+import { ApiError, apiGet, apiSend, getHealth, withQuery } from "./client";
 
 function mockFetch(impl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) {
   const fetchMock = vi.fn(impl);
@@ -107,5 +107,47 @@ describe("withQuery", () => {
     const fetchMock = mockFetch(async () => json({}));
     await apiGet("/api/articles", { query: { lang: "en" } });
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/articles?lang=en");
+  });
+});
+
+describe("apiSend", () => {
+  it("sends a JSON body and returns the JSON response", async () => {
+    const fetchMock = mockFetch(async () => json({ ok: true }));
+
+    await expect(
+      apiSend("PUT", "/api/articles/1/feedback", { rating: "relevant" }),
+    ).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledWith("/api/articles/1/feedback", {
+      method: "PUT",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: "relevant" }),
+    });
+  });
+
+  it("returns null for 204 No Content and sends no body without one", async () => {
+    const fetchMock = mockFetch(async () => new Response(null, { status: 204 }));
+
+    await expect(apiSend("DELETE", "/api/articles/1/feedback")).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith("/api/articles/1/feedback", {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+      body: undefined,
+    });
+  });
+
+  it("reports HTTP and network errors like apiGet", async () => {
+    mockFetch(async () => json({ detail: "Article not found" }, 404));
+    await expect(apiSend("DELETE", "/api/articles/9/feedback")).rejects.toMatchObject({
+      message: "Article not found",
+      status: 404,
+    });
+
+    mockFetch(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await expect(apiSend("DELETE", "/api/articles/9/feedback")).rejects.toMatchObject({
+      message: "Network error",
+      status: null,
+    });
   });
 });

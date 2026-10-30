@@ -88,6 +88,19 @@ const en = {
       failed: "Analysis failed",
     },
   },
+  feedback: {
+    label: "Relevance feedback",
+    relevant: "Relevant",
+    irrelevant: "Not relevant",
+    clear: "Undo",
+    current: {
+      none: "No feedback yet",
+      relevant: "Marked as relevant",
+      irrelevant: "Marked as not relevant",
+    },
+    saving: "Saving…",
+    error: "Feedback could not be saved. The stored state is shown.",
+  },
 } as const;
 
 type Texts<T> = { readonly [K in keyof T]: T[K] extends string ? string : Texts<T[K]> };
@@ -172,6 +185,19 @@ const de: Dictionary = {
       processing: "Analyse läuft",
       failed: "Analyse fehlgeschlagen",
     },
+  },
+  feedback: {
+    label: "Relevanzfeedback",
+    relevant: "Relevant",
+    irrelevant: "Nicht relevant",
+    clear: "Zurücknehmen",
+    current: {
+      none: "Noch kein Feedback",
+      relevant: "Als relevant markiert",
+      irrelevant: "Als nicht relevant markiert",
+    },
+    saving: "Wird gespeichert …",
+    error: "Feedback konnte nicht gespeichert werden. Der gespeicherte Stand wird angezeigt.",
   },
 };
 

@@ -14,7 +14,7 @@ export interface ArticleFixture {
   analysis_error: string | null;
   has_full_text: boolean;
   analysis: Record<string, unknown> | null;
-  feedback: null;
+  feedback: string | null;
   changed_at: string;
 }
 
