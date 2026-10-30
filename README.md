@@ -38,7 +38,7 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung und ein manuell gestarteter RSS-/Atom-Abruf per CLI. Scheduler, KI-Analyse und Frontend sind noch nicht implementiert.
+Vorhanden sind ein FastAPI-Backend mit Health-Check (`GET /health`) und Feed-Verwaltung (`/api/feeds`), SQLite-Speicherung von Artikeln und Feeds mit Deduplizierung, ein automatischer Feed-Abruf alle 15 Minuten im Serverprozess und ein manuell gestarteter Abruf per CLI. KI-Analyse und Frontend sind noch nicht implementiert.
 
 ## Backend lokal starten
 
@@ -61,6 +61,8 @@ curl http://127.0.0.1:8000/health   # → {"status":"ok"}
 Die interaktive API-Dokumentation ist unter http://127.0.0.1:8000/docs erreichbar.
 
 Die Datenbankdatei wird über `AI_RADAR_DB` festgelegt (Standard: `ai-radar.db` im Arbeitsverzeichnis, also `backend/` beim obigen Startbefehl). Schema und Migrationen werden beim Start angelegt.
+
+Solange der Server läuft, ruft er alle aktivierten, gespeicherten Feeds direkt nach dem Start und danach alle 15 Minuten ab. Das Intervall in Minuten lässt sich mit `AI_RADAR_FETCH_INTERVAL_MINUTES` ändern; `0` schaltet den automatischen Abruf ab. Läuft ein Abruf noch, wird der nächste übersprungen statt doppelt gestartet.
 
 ```bash
 cd backend && AI_RADAR_DB=../ai-radar.db ../.venv/bin/uvicorn ai_radar.main:app --reload

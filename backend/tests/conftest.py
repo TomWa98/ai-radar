@@ -12,3 +12,9 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(socket, "getaddrinfo", blocked)
     monkeypatch.setattr(socket.socket, "connect", blocked)
+
+
+@pytest.fixture(autouse=True)
+def no_scheduler(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Disable the background feed scheduler unless a test enables it."""
+    monkeypatch.setenv("AI_RADAR_FETCH_INTERVAL_MINUTES", "0")
