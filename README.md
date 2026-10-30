@@ -34,6 +34,7 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 - [Anforderungen](docs/requirements.md) – fachlicher Umfang und Akzeptanzgrundlage
 - [Architektur](docs/architecture.md) – Komponenten, Datenflüsse und technische Entscheidungen
+- [Agenten-Workflow](docs/agentic-workflow.md) – Issue-gesteuerte Entwicklung mit `/autonomous-feature`
 
 ## Projektstatus
 
