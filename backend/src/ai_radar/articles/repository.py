@@ -3,7 +3,12 @@
 import sqlite3
 from datetime import UTC, datetime
 
-from ai_radar.articles.models import Article, ArticleStatus, NewArticle
+from ai_radar.articles.models import (
+    AnalysisBasis,
+    Article,
+    ArticleStatus,
+    NewArticle,
+)
 from ai_radar.articles.url import normalize_url
 from ai_radar.db import fetch_one, transaction
 
@@ -30,6 +35,12 @@ def _row_to_article(row: sqlite3.Row) -> Article:
         collected_at=collected_at,
         status=ArticleStatus(row["status"]),
         feed_id=row["feed_id"],
+        full_text=row["full_text"],
+        analysis_basis=(
+            None
+            if row["analysis_basis"] is None
+            else AnalysisBasis(row["analysis_basis"])
+        ),
     )
 
 
@@ -40,7 +51,8 @@ class ArticleRepository:
     def add(self, article: NewArticle) -> Article | None:
         """Store a new article; return ``None`` if its URL is already stored.
 
-        Existing articles are never overwritten.
+        Existing articles are never overwritten. A new article starts with the
+        feed excerpt as its analysis basis.
         """
         normalized_url = normalize_url(article.url)
         with transaction(self._conn):
@@ -49,8 +61,8 @@ class ArticleRepository:
                 """
                 INSERT INTO articles
                     (source, url, normalized_url, title, content,
-                     published_at, collected_at, feed_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     published_at, collected_at, feed_id, analysis_basis)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (normalized_url) DO NOTHING
                 RETURNING *
                 """,
@@ -63,9 +75,18 @@ class ArticleRepository:
                     _to_db(article.published_at),
                     _to_db(article.collected_at),
                     article.feed_id,
+                    AnalysisBasis.EXCERPT,
                 ),
             )
         return None if row is None else _row_to_article(row)
+
+    def set_full_text(self, article_id: int, full_text: str) -> None:
+        """Store the extracted page text and make it the analysis basis."""
+        with transaction(self._conn):
+            self._conn.execute(
+                "UPDATE articles SET full_text = ?, analysis_basis = ? WHERE id = ?",
+                (full_text, AnalysisBasis.FULL_TEXT, article_id),
+            )
 
     def get_by_id(self, article_id: int) -> Article | None:
         row = fetch_one(

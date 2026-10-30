@@ -25,7 +25,8 @@ from pathlib import Path
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import connect
 from ai_radar.feeds.repository import FeedRepository
-from ai_radar.ingest.fetch import create_client, fetch_feed
+from ai_radar.ingest.fetch import create_client, fetch_feed, fetch_page
+from ai_radar.ingest.fulltext import PageFetcher
 from ai_radar.ingest.service import FeedResult, Fetcher, ingest_stored_feeds
 
 logger = logging.getLogger(__name__)
@@ -60,15 +61,25 @@ def fetch_interval_seconds(minutes: str | None) -> float | None:
 
 
 def ingest_stored_feeds_once(
-    db_path: Path, fetch: Fetcher | None = None
+    db_path: Path,
+    fetch: Fetcher | None = None,
+    page_fetch: PageFetcher | None = None,
 ) -> list[FeedResult]:
     """Run one ingestion pass over the stored feeds with its own connection."""
     with ExitStack() as stack:
         conn = stack.enter_context(closing(connect(db_path)))
-        if fetch is None:
+        if fetch is None or page_fetch is None:
             client = stack.enter_context(create_client())
-            fetch = partial(fetch_feed, client=client)
-        return ingest_stored_feeds(FeedRepository(conn), fetch, ArticleRepository(conn))
+            if fetch is None:
+                fetch = partial(fetch_feed, client=client)
+            if page_fetch is None:
+                page_fetch = partial(fetch_page, client=client)
+        return ingest_stored_feeds(
+            FeedRepository(conn),
+            fetch,
+            ArticleRepository(conn),
+            fetch_page=page_fetch,
+        )
 
 
 @dataclass(frozen=True, slots=True)

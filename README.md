@@ -107,6 +107,8 @@ Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz un
 
 Beim Abruf gespeicherter Feeds werden deaktivierte Feeds übersprungen; pro Feed werden Zeitpunkt des letzten Abrufs und des letzten Erfolgs sowie die letzte Fehlermeldung gespeichert, und neue Artikel werden mit ihrem Feed verknüpft. Beim Abruf über URL-Argumente bleiben gespeicherte Feeds unverändert.
 
+Für Feeds mit `fetch_full_text: true` (Standard: aus) wird zu jedem neuen Artikel die Artikelseite abgerufen und mit `trafilatura` von Navigation, Werbung und ähnlichen Elementen bereinigt. Der Abruf nutzt denselben SSRF-Schutz und dieselben Limits wie der Feed-Abruf, ohne Cookies oder Logins. Ist der Volltext nicht frei verfügbar (Fehler, HTTP 401/402/403, leerer Extrakt oder Paywall-Kennzeichnung `isAccessibleForFree: false`), bleibt der Feed-Auszug die Analysebasis. Der Feed-Auszug wird immer zusätzlich gespeichert. Nutzungsbedingungen der Quellen verantwortet der Nutzer (D3).
+
 Abgerufen werden nur öffentliche `http`/`https`-Adressen (SSRF-Schutz, siehe [Architektur](docs/architecture.md)). Fehlerhafte Feeds werden gemeldet, ohne die übrigen zu blockieren; der Exit-Code ist dann `1`.
 
 ## Tests ausführen

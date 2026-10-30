@@ -68,10 +68,22 @@ _V3_FEED_STATUS: Migration = (
     "CREATE INDEX articles_feed_id ON articles (feed_id)",
 )
 
+# Full text extracted from the article page (D3) and which text an analysis
+# should use. The feed excerpt stays in ``content``. Articles collected before
+# this migration keep analysis_basis NULL (they only have the excerpt).
+_V4_FULL_TEXT: Migration = (
+    "ALTER TABLE articles ADD COLUMN full_text TEXT",
+    """
+    ALTER TABLE articles ADD COLUMN analysis_basis TEXT
+        CHECK (analysis_basis IN ('full_text', 'excerpt'))
+    """,
+)
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
     _V3_FEED_STATUS,
+    _V4_FULL_TEXT,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

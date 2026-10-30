@@ -240,6 +240,7 @@ def test_populated_v1_database_is_migrated_without_losing_articles(
             )
             assert article.collected_at == datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
             assert article.feed_id is None
+            assert (article.full_text, article.analysis_basis) == (None, None)
         row = fetch_one(conn, "SELECT test_extra_id FROM articles LIMIT 1")
         assert row is not None and row[0] is None
 
