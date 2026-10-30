@@ -22,6 +22,8 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 
+from ai_radar.analysis.analyzer import Analyzer
+from ai_radar.analysis.pipeline import AnalysisSettings, analyze_pending
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import connect
 from ai_radar.feeds.repository import FeedRepository
@@ -87,6 +89,26 @@ class RunStatus:
     running: bool
     last_started_at: datetime | None
     last_finished_at: datetime | None
+
+
+def ingest_and_analyze_once(
+    db_path: Path,
+    analyzer: Analyzer,
+    settings: AnalysisSettings,
+    fetch: Fetcher | None = None,
+    page_fetch: PageFetcher | None = None,
+) -> None:
+    """One pass: fetch the stored feeds, then analyze pending articles.
+
+    A failure while fetching does not prevent the analysis of articles that
+    are already stored.
+    """
+    try:
+        ingest_stored_feeds_once(db_path, fetch, page_fetch)
+    except Exception as exc:
+        logger.error("Ingestion failed: %s", type(exc).__name__)
+    with closing(connect(db_path)) as conn:
+        analyze_pending(conn, analyzer, settings)
 
 
 class IngestionRunner:

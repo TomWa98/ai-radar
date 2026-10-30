@@ -9,7 +9,7 @@ from ai_radar.db import open_database
 from ai_radar.feeds.models import NewFeed
 from ai_radar.feeds.repository import FeedRepository
 from ai_radar.ingest.fetch import FetchedFeed, FetchError
-from ai_radar.ingest.scheduler import IngestionRunner, ingest_stored_feeds_once
+from ai_radar.ingest.scheduler import IngestionRunner, ingest_and_analyze_once
 from ai_radar.main import DB_PATH_ENV, app
 
 FEED = b"""<rss version="2.0"><channel><title>Feed</title>
@@ -30,6 +30,9 @@ class FakeFetcher:
             raise FetchError("HTTP status 503")
         return FetchedFeed(FEED, url)
 
+    def page(self, url: str) -> FetchedFeed:
+        raise AssertionError("no article pages in these tests")
+
 
 @pytest.fixture
 def db_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -42,8 +45,10 @@ def db_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def fetch(monkeypatch: pytest.MonkeyPatch) -> FakeFetcher:
     fake = FakeFetcher()
     monkeypatch.setattr(
-        "ai_radar.main.ingest_stored_feeds_once",
-        lambda db_path: ingest_stored_feeds_once(db_path, fake),
+        "ai_radar.main.ingest_and_analyze_once",
+        lambda db_path, analyzer, settings: ingest_and_analyze_once(
+            db_path, analyzer, settings, fake, fake.page
+        ),
     )
     return fake
 

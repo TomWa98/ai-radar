@@ -12,6 +12,8 @@ from ai_radar.articles.models import (
 from ai_radar.articles.url import normalize_url
 from ai_radar.db import fetch_one, transaction
 
+MAX_ANALYSIS_ERROR_LENGTH = 500
+
 
 def _to_db(value: datetime | None) -> str | None:
     return None if value is None else value.astimezone(UTC).isoformat()
@@ -36,6 +38,9 @@ def _row_to_article(row: sqlite3.Row) -> Article:
         status=ArticleStatus(row["status"]),
         feed_id=row["feed_id"],
         full_text=row["full_text"],
+        analysis_attempts=row["analysis_attempts"],
+        analysis_error=row["analysis_error"],
+        analysis_attempted_at=_from_db(row["analysis_attempted_at"]),
         analysis_basis=(
             None
             if row["analysis_basis"] is None
@@ -105,3 +110,70 @@ class ArticleRepository:
             (normalize_url(url),),
         )
         return None if row is None else _row_to_article(row)
+
+    # --- Analysis status (see ai_radar.analysis.pipeline) -----------------
+
+    def claim_for_analysis(
+        self, limit: int, max_attempts: int, now: datetime, retry_before: datetime
+    ) -> list[Article]:
+        """Atomically move up to ``limit`` articles to ``processing``.
+
+        Candidates are ``new`` articles and ``failed`` ones with fewer than
+        ``max_attempts`` attempts whose last attempt was claimed before
+        ``retry_before``. The selection and update run in one write
+        transaction, so concurrent callers never claim the same article.
+        """
+        with transaction(self._conn):
+            rows = self._conn.execute(
+                """
+                UPDATE articles
+                SET status = 'processing', analysis_attempted_at = ?
+                WHERE id IN (
+                    SELECT id FROM articles
+                    WHERE status = 'new'
+                       OR (status = 'failed'
+                           AND analysis_attempts < ?
+                           AND (analysis_attempted_at IS NULL
+                                OR analysis_attempted_at < ?))
+                    ORDER BY id
+                    LIMIT ?
+                )
+                RETURNING *
+                """,
+                (_to_db(now), max_attempts, _to_db(retry_before), limit),
+            ).fetchall()
+        return sorted((_row_to_article(row) for row in rows), key=lambda a: a.id)
+
+    def mark_analyzed(self, article_id: int) -> None:
+        self._finish_attempt(article_id, ArticleStatus.ANALYZED, None)
+
+    def mark_failed(self, article_id: int, error: str) -> None:
+        """Record a failed attempt; ``error`` must already be safe to show."""
+        self._finish_attempt(
+            article_id, ArticleStatus.FAILED, error[:MAX_ANALYSIS_ERROR_LENGTH]
+        )
+
+    def reset_interrupted(self) -> int:
+        """Return articles left in ``processing`` (e.g. after a crash) to ``new``.
+
+        Only safe while no analysis is running; call it at startup.
+        """
+        with transaction(self._conn):
+            cursor = self._conn.execute(
+                "UPDATE articles SET status = 'new' WHERE status = 'processing'"
+            )
+        return cursor.rowcount
+
+    def _finish_attempt(
+        self, article_id: int, status: ArticleStatus, error: str | None
+    ) -> None:
+        with transaction(self._conn):
+            self._conn.execute(
+                """
+                UPDATE articles
+                SET status = ?, analysis_error = ?,
+                    analysis_attempts = analysis_attempts + 1
+                WHERE id = ? AND status = 'processing'
+                """,
+                (status, error, article_id),
+            )
