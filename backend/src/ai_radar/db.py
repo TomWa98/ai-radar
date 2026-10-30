@@ -140,6 +140,19 @@ _V7_LLM_CALLS: Migration = (
     "CREATE INDEX llm_calls_called_at ON llm_calls (called_at)",
 )
 
+# Manual interests (FR-14). topic_key is the normalized, case-folded topic, so
+# "LLM" and "llm" are the same interest. Only the user changes these rows.
+_V8_INTERESTS = """
+CREATE TABLE interests (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic      TEXT NOT NULL,
+    topic_key  TEXT NOT NULL UNIQUE,
+    weight     TEXT NOT NULL CHECK (weight IN ('low', 'medium', 'high')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+)
+"""
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
@@ -148,6 +161,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _V5_ANALYSES,
     _V6_ANALYSIS_STATUS,
     _V7_LLM_CALLS,
+    (_V8_INTERESTS,),
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

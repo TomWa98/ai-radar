@@ -109,6 +109,17 @@ curl -X POST http://127.0.0.1:8000/api/feeds \
 
 Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz und ist nur für `127.0.0.1` vorgesehen (D9); Anfragen mit einem anderen `Host`-Header als `127.0.0.1` oder `localhost` werden mit `400` abgelehnt (Schutz vor DNS-Rebinding).
 
+## Interessen verwalten (API)
+
+| Methode | Pfad | Ergebnis |
+|---|---|---|
+| `GET` | `/api/interests` | Liste der manuellen Interessen |
+| `POST` | `/api/interests` | Interesse anlegen (`topic`, `weight`: `low`/`medium`/`high`, Standard `medium`) → `201`; doppeltes Thema (ohne Groß-/Kleinschreibung) `409`; ungültige Eingabe oder mehr als 100 Interessen `422` |
+| `PATCH` | `/api/interests/{id}` | Thema und/oder Gewichtung ändern → `200`; unbekannte ID `404` |
+| `DELETE` | `/api/interests/{id}` | Interesse entfernen → `204` |
+
+Themen werden von überflüssigen Leerzeichen bereinigt (max. 100 Zeichen, keine Steuerzeichen). Manuelle Interessen ändert nur der Nutzer; sie werden nie automatisch angepasst. Gelernte Präferenzen werden getrennt geführt.
+
 ## Feeds abrufen
 
 ```bash
