@@ -37,7 +37,33 @@ Die Anwendung ist zunächst für **einen Nutzer** und den Zugriff im lokalen Net
 
 ## Projektstatus
 
-Aktuell werden Dokumentation, Entwicklungsumgebung und der kontrollierte Claude-Code-Workflow vorbereitet. Start- und Installationsbefehle ergänzen wir, sobald die ersten Komponenten tatsächlich lauffähig sind.
+Ein minimales FastAPI-Backend mit Health-Check (`GET /health`) ist vorhanden. Feed-Abruf, KI-Analyse, Datenbank und Frontend sind noch nicht implementiert.
+
+## Backend lokal starten
+
+Voraussetzung: Python ≥ 3.12. Alle Befehle im Projektverzeichnis ausführen.
+
+```bash
+# Virtuelle Umgebung anlegen (einmalig, falls noch nicht vorhanden)
+python3 -m venv .venv
+
+# Backend inklusive Test-Abhängigkeiten installieren (editable)
+.venv/bin/pip install -e "backend[dev]"
+
+# Server starten (http://127.0.0.1:8000)
+cd backend && ../.venv/bin/uvicorn ai_radar.main:app --reload
+
+# In einem zweiten Terminal prüfen
+curl http://127.0.0.1:8000/health   # → {"status":"ok"}
+```
+
+Die interaktive API-Dokumentation ist unter http://127.0.0.1:8000/docs erreichbar.
+
+## Tests ausführen
+
+```bash
+.venv/bin/pytest backend
+```
 
 ## Geplanter Entwicklungsansatz
 
