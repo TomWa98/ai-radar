@@ -42,6 +42,8 @@ def main(argv: Sequence[str] | None = None, fetch: Fetcher | None = None) -> int
     urls = list(dict.fromkeys(urls))  # drop repeats, keep order
     if not urls:
         parser.error("no feed URLs given")
+    if not args.db.parent.is_dir():
+        parser.error(f"database directory does not exist: {args.db.parent}")
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     with ExitStack() as stack:

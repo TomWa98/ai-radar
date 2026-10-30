@@ -7,12 +7,12 @@ from datetime import UTC, datetime
 from urllib.parse import urlsplit, urlunsplit
 
 from ai_radar.articles.repository import ArticleRepository
-from ai_radar.ingest.fetch import FetchError
+from ai_radar.ingest.fetch import FetchedFeed, FetchError
 from ai_radar.ingest.parse import FeedParseError, parse_feed
 
 logger = logging.getLogger(__name__)
 
-Fetcher = Callable[[str], bytes]
+Fetcher = Callable[[str], FetchedFeed]
 Clock = Callable[[], datetime]
 
 
@@ -47,8 +47,12 @@ def _now() -> datetime:
 def ingest_feed(
     url: str, fetch: Fetcher, repository: ArticleRepository, clock: Clock = _now
 ) -> FeedResult:
-    """Fetch, parse, and store one feed; errors propagate to the caller."""
-    parsed = parse_feed(fetch(url), url, clock())
+    """Fetch, parse, and store one feed; errors propagate to the caller.
+
+    Relative links are resolved against the final URL after redirects.
+    """
+    fetched = fetch(url)
+    parsed = parse_feed(fetched.content, fetched.url, clock())
     new = duplicates = 0
     for article in parsed.articles:
         if repository.add(article) is None:

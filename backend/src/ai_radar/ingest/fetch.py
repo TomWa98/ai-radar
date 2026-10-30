@@ -11,8 +11,10 @@ can still reach an internal address. See ``docs/architecture.md``.
 
 import ipaddress
 import socket
+import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 import httpx
@@ -20,6 +22,7 @@ import httpx
 USER_AGENT = "AI-Radar/0.1 (+self-hosted feed reader)"
 TIMEOUT = 10.0  # seconds per connect/read/write/pool operation
 TOTAL_TIMEOUT = 30.0  # seconds for one feed, including redirects
+DNS_TIMEOUT = 10.0  # seconds per host lookup, also bounded by TOTAL_TIMEOUT
 MAX_BYTES = 5 * 1024 * 1024  # after decompression
 MAX_REDIRECTS = 5
 
@@ -28,7 +31,21 @@ _ACCEPT = (
     "text/xml;q=0.9, */*;q=0.1"
 )
 
+# Ask for an uncompressed body. Servers may compress anyway; the size limit is
+# applied to the decompressed data either way.
+_REQUEST_HEADERS = {"Accept-Encoding": "identity"}
+
+# NAT64 well-known prefix (RFC 6052): the gateway may reach any IPv4 address,
+# including private ones, so these addresses are never treated as public.
+_NAT64 = ipaddress.ip_network("64:ff9b::/96")
+
 Resolver = Callable[[str, int], list[str]]
+
+
+@dataclass(frozen=True, slots=True)
+class FetchedFeed:
+    content: bytes
+    url: str  # final URL after redirects; base for relative links
 
 
 class FetchError(Exception):
@@ -51,7 +68,7 @@ def resolve_host(host: str, port: int) -> list[str]:
 def _is_public(address: str) -> bool:
     ip = ipaddress.ip_address(address.split("%", 1)[0])  # drop IPv6 zone id
     if isinstance(ip, ipaddress.IPv6Address):
-        if ip.teredo is not None:
+        if ip.teredo is not None or ip in _NAT64:
             return False
         # IPv6 forms that embed an IPv4 address are judged by that address.
         embedded = ip.ipv4_mapped or ip.sixtofour
@@ -83,6 +100,37 @@ def check_url(url: str, resolve: Resolver = resolve_host) -> None:
         raise FetchError(f"Cannot resolve host {host!r}")
     if not all(_is_public(address) for address in addresses):
         raise UnsafeURLError(f"Host {host!r} resolves to a non-public address")
+
+
+def _resolve_with_timeout(resolve: Resolver, timeout: float) -> Resolver:
+    """Wrap ``resolve`` so that one lookup fails after ``timeout`` seconds.
+
+    A blocking lookup cannot be cancelled; it finishes in a daemon thread whose
+    result is discarded.
+    """
+
+    def bounded(host: str, port: int) -> list[str]:
+        if timeout <= 0:
+            raise FetchError("Feed download took too long")
+        outcome: list[list[str] | BaseException] = []
+
+        def run() -> None:
+            try:
+                outcome.append(resolve(host, port))
+            except BaseException as exc:
+                outcome.append(exc)
+
+        thread = threading.Thread(target=run, name="resolve-host", daemon=True)
+        thread.start()
+        thread.join(timeout)
+        if not outcome:
+            raise FetchError(f"Resolving host {host!r} took too long")
+        result = outcome[0]
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+    return bounded
 
 
 def create_client(timeout: float = TIMEOUT) -> httpx.Client:
@@ -124,23 +172,24 @@ def fetch_feed(
     max_bytes: int = MAX_BYTES,
     max_redirects: int = MAX_REDIRECTS,
     total_timeout: float = TOTAL_TIMEOUT,
-) -> bytes:
-    """Return the body of ``url``; raise :class:`FetchError` on any failure."""
+) -> FetchedFeed:
+    """Return the body and final URL; raise :class:`FetchError` on any failure."""
     deadline = time.monotonic() + total_timeout
     for _ in range(max_redirects + 1):
-        check_url(url, resolve)
+        remaining = deadline - time.monotonic()
+        check_url(url, _resolve_with_timeout(resolve, min(DNS_TIMEOUT, remaining)))
         if time.monotonic() > deadline:
             raise FetchError("Feed download took too long")
         # No cookies are carried over between requests or hops.
         client.cookies.clear()
         try:
-            with client.stream("GET", url) as response:
+            with client.stream("GET", url, headers=_REQUEST_HEADERS) as response:
                 if response.is_redirect:
                     url = str(response.url.join(response.headers["location"]))
                     continue
                 if response.status_code != httpx.codes.OK:
                     raise FetchError(f"HTTP status {response.status_code}")
-                return _read_limited(response, max_bytes, deadline)
+                return FetchedFeed(_read_limited(response, max_bytes, deadline), url)
         except (httpx.HTTPError, httpx.InvalidURL) as exc:
             raise FetchError(f"Request failed: {type(exc).__name__}") from exc
     raise FetchError(f"More than {max_redirects} redirects")

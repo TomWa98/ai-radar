@@ -1,4 +1,7 @@
+import gzip
 import socket
+import threading
+import time
 from collections.abc import Callable
 
 import httpx
@@ -31,7 +34,8 @@ def client_for(handler: Callable[[httpx.Request], httpx.Response]) -> httpx.Clie
 def test_fetch_returns_body() -> None:
     with client_for(lambda request: httpx.Response(200, content=FEED)) as client:
         assert (
-            fetch_feed("https://example.com/feed", client, resolve=resolver({})) == FEED
+            fetch_feed("https://example.com/feed", client, resolve=resolver({})).content
+            == FEED
         )
 
 
@@ -67,6 +71,8 @@ def test_check_url_rejects_unsupported_urls(url: str) -> None:
         "::ffff:127.0.0.1",
         "2002:7f00:1::",  # 6to4 for 127.0.0.1
         "2001:0:4136:e378:8000:63bf:3fff:fdd2",  # Teredo
+        "64:ff9b::a00:5",  # NAT64 for 10.0.0.5
+        "64:ff9b::5db8:d70e",  # NAT64 for a public address
     ],
 )
 def test_check_url_rejects_non_public_addresses(address: str) -> None:
@@ -112,9 +118,87 @@ def test_redirect_to_public_target_is_followed() -> None:
         return httpx.Response(200, content=FEED)
 
     with client_for(handler) as client:
-        assert (
-            fetch_feed("https://example.com/old", client, resolve=resolver({})) == FEED
+        fetched = fetch_feed("https://example.com/old", client, resolve=resolver({}))
+    assert fetched.content == FEED
+    assert fetched.url == "https://example.com/new"
+
+
+def test_final_url_after_redirect_to_other_host() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "old.example":
+            return httpx.Response(
+                301, headers={"location": "https://new.example/feeds/rss"}
+            )
+        return httpx.Response(200, content=FEED)
+
+    with client_for(handler) as client:
+        fetched = fetch_feed("https://old.example/rss", client, resolve=resolver({}))
+    assert fetched.url == "https://new.example/feeds/rss"
+
+
+def test_requests_uncompressed_body() -> None:
+    encodings: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        encodings.append(request.headers.get("accept-encoding"))
+        return httpx.Response(200, content=FEED)
+
+    # httpx clients send "gzip, deflate, ..." by default.
+    with client_for(handler) as client:
+        fetch_feed("https://example.com/feed", client, resolve=resolver({}))
+    assert encodings == ["identity"]
+
+
+def test_size_limit_applies_after_decompression() -> None:
+    compressed = gzip.compress(b"x" * 1000)
+    assert len(compressed) < 100
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        # A server may compress although the client asked for identity.
+        return httpx.Response(
+            200, headers={"content-encoding": "gzip"}, content=compressed
         )
+
+    with client_for(handler) as client, pytest.raises(FetchError, match="larger"):
+        fetch_feed(
+            "https://example.com/feed", client, resolve=resolver({}), max_bytes=100
+        )
+
+
+def test_slow_dns_counts_against_total_timeout() -> None:
+    release = threading.Event()
+    requests: list[httpx.Request] = []
+
+    def slow_resolve(host: str, port: int) -> list[str]:
+        release.wait(5)
+        return [PUBLIC_IP]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, content=FEED)
+
+    started = time.monotonic()
+    try:
+        with client_for(handler) as client, pytest.raises(FetchError, match="long"):
+            fetch_feed(
+                "https://example.com/feed",
+                client,
+                resolve=slow_resolve,
+                total_timeout=0.2,
+            )
+    finally:
+        release.set()
+    assert time.monotonic() - started < 2
+    assert requests == []
+
+
+def test_resolver_errors_propagate() -> None:
+    def failing_resolve(host: str, port: int) -> list[str]:
+        raise FetchError(f"Cannot resolve host {host!r}")
+
+    with client_for(lambda r: httpx.Response(200)) as client:
+        with pytest.raises(FetchError, match="Cannot resolve"):
+            fetch_feed("https://example.com/feed", client, resolve=failing_resolve)
 
 
 def test_redirect_to_private_target_is_blocked() -> None:
