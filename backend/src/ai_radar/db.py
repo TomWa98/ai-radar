@@ -164,6 +164,16 @@ CREATE TABLE article_feedback (
 )
 """
 
+# Resets of the learned preferences (D6, FR-18). Learned preferences are
+# derived from feedback given after the latest reset, so a reset keeps all
+# stored feedback and the manual interests.
+_V10_PREFERENCE_RESETS = """
+CREATE TABLE preference_resets (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    reset_at TEXT NOT NULL
+)
+"""
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
@@ -174,6 +184,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _V7_LLM_CALLS,
     (_V8_INTERESTS,),
     (_V9_FEEDBACK,),
+    (_V10_PREFERENCE_RESETS,),
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

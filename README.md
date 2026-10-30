@@ -129,6 +129,15 @@ Themen werden von überflüssigen Leerzeichen bereinigt (max. 100 Zeichen, keine
 
 Pro Artikel gibt es höchstens eine Bewertung. Feedback ändert keine bestehenden Analysen.
 
+## Gelernte Präferenzen (API)
+
+Aus dem Feedback werden regelbasiert (ohne Machine Learning) Präferenzen abgeleitet: Je Thema-Stichwort eines bewerteten Artikels zählt „relevant“ +1 und „irrelevant“ −1; ab 3 Bewertungen wird das Thema als gelernte Präferenz geführt. Neue Analysen erhalten die stärksten gelernten Präferenzen; bestehende Analysen werden nicht neu berechnet.
+
+| Methode | Pfad | Ergebnis |
+|---|---|---|
+| `GET` | `/api/preferences` | `{"learned": [{"topic", "score", "relevant", "irrelevant", "ratings"}], "last_reset_at"}` – getrennt von den manuellen Interessen (`/api/interests`) |
+| `DELETE` | `/api/preferences` | Gelernte Präferenzen zurücksetzen → `204`; Feedback und manuelle Interessen bleiben erhalten |
+
 ## Feeds abrufen
 
 ```bash

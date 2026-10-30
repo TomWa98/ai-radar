@@ -100,6 +100,7 @@ Bibliotheken für Volltextextraktion, ORM/Migrationen, Scheduling und Frontend-R
 - Relevant-/Irrelevant-Feedback speichern und bei späteren Bewertungen berücksichtigen.
 - Gelernte Präferenzen getrennt von expliziten Interessen speichern, anzeigen und zurücksetzen können.
 - Explizite Interessen nicht automatisch überschreiben.
+- Gelernte Präferenzen (D6) werden bei Bedarf aus dem gespeicherten Feedback berechnet – regelbasiert, ohne Machine Learning: Je Thema-Stichwort der jeweils neuesten Analyse eines bewerteten Artikels zählt „relevant“ +1 und „irrelevant“ −1; ab 3 Bewertungen gilt das Thema als gelernte Präferenz, die Zähler dienen als Begründung. Zurücksetzen speichert nur einen Zeitpunkt; danach zählt nur später gegebenes oder geändertes Feedback. Feedback und manuelle Interessen bleiben erhalten, bestehende Analysen werden nicht neu berechnet.
 
 ### 4.6 Persistence
 

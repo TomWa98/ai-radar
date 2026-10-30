@@ -30,6 +30,7 @@ from ai_radar.feeds.repository import FeedRepository
 from ai_radar.ingest.fetch import create_client, fetch_feed, fetch_page
 from ai_radar.ingest.fulltext import PageFetcher
 from ai_radar.ingest.service import FeedResult, Fetcher, ingest_stored_feeds
+from ai_radar.preferences.repository import PreferenceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -101,14 +102,16 @@ def ingest_and_analyze_once(
     """One pass: fetch the stored feeds, then analyze pending articles.
 
     A failure while fetching does not prevent the analysis of articles that
-    are already stored.
+    are already stored. New analyses get the current learned preferences
+    (D6); existing analyses are not recomputed.
     """
     try:
         ingest_stored_feeds_once(db_path, fetch, page_fetch)
     except Exception as exc:
         logger.error("Ingestion failed: %s", type(exc).__name__)
     with closing(connect(db_path)) as conn:
-        analyze_pending(conn, analyzer, settings)
+        learned = PreferenceRepository(conn).for_analysis()
+        analyze_pending(conn, analyzer, settings, learned_preferences=learned)
 
 
 class IngestionRunner:
