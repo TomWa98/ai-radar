@@ -79,11 +79,48 @@ _V4_FULL_TEXT: Migration = (
     """,
 )
 
+# Analyses (D4-D6): categories, scores, topics, basis, and usage are
+# language-independent; summaries and reasons are stored once per language.
+# An article may have several analyses (retries); articles stay unchanged.
+_V5_ANALYSES: Migration = (
+    """
+    CREATE TABLE analyses (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id           INTEGER NOT NULL,
+        primary_category     TEXT NOT NULL CHECK (primary_category IN
+                             ('Releases', 'Features', 'Security', 'Use Cases',
+                              'Other')),
+        secondary_categories TEXT NOT NULL DEFAULT '[]',  -- JSON array
+        importance           INTEGER NOT NULL CHECK (importance BETWEEN 1 AND 5),
+        relevance            INTEGER NOT NULL CHECK (relevance BETWEEN 1 AND 5),
+        topics               TEXT NOT NULL DEFAULT '[]',  -- JSON array
+        analysis_basis       TEXT NOT NULL
+                             CHECK (analysis_basis IN ('full_text', 'excerpt')),
+        model                TEXT NOT NULL,
+        input_tokens         INTEGER NOT NULL CHECK (input_tokens >= 0),
+        output_tokens        INTEGER NOT NULL CHECK (output_tokens >= 0),
+        estimated_cost       REAL NOT NULL CHECK (estimated_cost >= 0),
+        analyzed_at          TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX analyses_article_id ON analyses (article_id)",
+    """
+    CREATE TABLE analysis_texts (
+        analysis_id      INTEGER NOT NULL,
+        language         TEXT NOT NULL CHECK (language IN ('de', 'en')),
+        summary          TEXT NOT NULL,
+        relevance_reason TEXT NOT NULL,
+        PRIMARY KEY (analysis_id, language)
+    )
+    """,
+)
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
     _V3_FEED_STATUS,
     _V4_FULL_TEXT,
+    _V5_ANALYSES,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)
