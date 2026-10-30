@@ -15,7 +15,8 @@ from pathlib import Path
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import open_database
 from ai_radar.feeds.repository import FeedRepository
-from ai_radar.ingest.fetch import create_client, fetch_feed
+from ai_radar.ingest.fetch import create_client, fetch_feed, fetch_page
+from ai_radar.ingest.fulltext import PageFetcher
 from ai_radar.ingest.service import Fetcher, ingest_feeds, ingest_stored_feeds
 
 
@@ -25,7 +26,11 @@ def read_feed_list(path: Path) -> list[str]:
     return [line for line in lines if line and not line.startswith("#")]
 
 
-def main(argv: Sequence[str] | None = None, fetch: Fetcher | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    fetch: Fetcher | None = None,
+    page_fetch: PageFetcher | None = None,
+) -> int:
     """Run one ingestion pass; return 0 if every feed succeeded, else 1."""
     parser = argparse.ArgumentParser(
         prog="python -m ai_radar.ingest",
@@ -55,14 +60,19 @@ def main(argv: Sequence[str] | None = None, fetch: Fetcher | None = None) -> int
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     with ExitStack() as stack:
         conn = stack.enter_context(open_database(args.db))
-        if fetch is None:
+        if fetch is None or page_fetch is None:
             client = stack.enter_context(create_client())
-            fetch = partial(fetch_feed, client=client)
+            if fetch is None:
+                fetch = partial(fetch_feed, client=client)
+            if page_fetch is None:
+                page_fetch = partial(fetch_page, client=client)
         articles = ArticleRepository(conn)
         if urls:
             results = ingest_feeds(urls, fetch, articles)
         else:
-            results = ingest_stored_feeds(FeedRepository(conn), fetch, articles)
+            results = ingest_stored_feeds(
+                FeedRepository(conn), fetch, articles, fetch_page=page_fetch
+            )
 
     if not results:
         print("No enabled feeds stored.")

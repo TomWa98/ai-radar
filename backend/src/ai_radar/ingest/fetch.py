@@ -30,6 +30,7 @@ _ACCEPT = (
     "application/rss+xml, application/atom+xml, application/xml;q=0.9, "
     "text/xml;q=0.9, */*;q=0.1"
 )
+_PAGE_ACCEPT = "text/html, application/xhtml+xml;q=0.9, */*;q=0.1"
 
 # Ask for an uncompressed body. Servers may compress anyway; the size limit is
 # applied to the decompressed data either way.
@@ -134,7 +135,7 @@ def _resolve_with_timeout(resolve: Resolver, timeout: float) -> Resolver:
 
 
 def create_client(timeout: float = TIMEOUT) -> httpx.Client:
-    """Create an HTTP client for :func:`fetch_feed`.
+    """Create an HTTP client for :func:`fetch_feed` and :func:`fetch_page`.
 
     Environment proxies and ``.netrc`` credentials are ignored
     (``trust_env=False``) so requests go directly to the checked host.
@@ -172,6 +173,7 @@ def fetch_feed(
     max_bytes: int = MAX_BYTES,
     max_redirects: int = MAX_REDIRECTS,
     total_timeout: float = TOTAL_TIMEOUT,
+    accept: str = _ACCEPT,
 ) -> FetchedFeed:
     """Return the body and final URL; raise :class:`FetchError` on any failure."""
     deadline = time.monotonic() + total_timeout
@@ -183,7 +185,8 @@ def fetch_feed(
         # No cookies are carried over between requests or hops.
         client.cookies.clear()
         try:
-            with client.stream("GET", url, headers=_REQUEST_HEADERS) as response:
+            headers = {**_REQUEST_HEADERS, "Accept": accept}
+            with client.stream("GET", url, headers=headers) as response:
                 if response.is_redirect:
                     url = str(response.url.join(response.headers["location"]))
                     continue
@@ -193,3 +196,14 @@ def fetch_feed(
         except (httpx.HTTPError, httpx.InvalidURL) as exc:
             raise FetchError(f"Request failed: {type(exc).__name__}") from exc
     raise FetchError(f"More than {max_redirects} redirects")
+
+
+def fetch_page(
+    url: str, client: httpx.Client, *, resolve: Resolver = resolve_host
+) -> FetchedFeed:
+    """Fetch an article web page with the same checks and limits as a feed.
+
+    Article URLs come from untrusted feeds, so every hop is checked like a feed
+    URL. No cookies, logins, or other means of access are used.
+    """
+    return fetch_feed(url, client, resolve=resolve, accept=_PAGE_ACCEPT)

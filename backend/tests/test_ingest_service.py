@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
@@ -6,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from ai_radar.articles.models import AnalysisBasis
 from ai_radar.articles.repository import ArticleRepository
 from ai_radar.db import connect, open_database
 from ai_radar.feeds.models import NewFeed
@@ -394,3 +396,171 @@ def test_cli_with_urls_does_not_touch_stored_feeds(tmp_path: Path) -> None:
     assert fetch.calls == ["https://a.example/rss"]
     with closing(connect(db)) as conn:
         assert FeedRepository(conn).get_by_id(stored.id) == stored
+
+
+# --- Full text (D3) -------------------------------------------------------
+
+FEED_WITH_EXCERPTS = b"""<rss version="2.0"><channel><title>News</title>
+  <item><title>One</title><link>https://news.example/1</link>
+    <description>Excerpt one</description></item>
+  <item><title>Two</title><link>https://news.example/2</link>
+    <description>Excerpt two</description></item>
+</channel></rss>"""
+
+
+class FakePageFetcher:
+    def __init__(self, pages: dict[str, bytes | Exception]) -> None:
+        self.pages = pages
+        self.calls: list[str] = []
+
+    def __call__(self, url: str) -> FetchedFeed:
+        self.calls.append(url)
+        page = self.pages[url]
+        if isinstance(page, Exception):
+            raise page
+        return FetchedFeed(page, url)
+
+
+EMPTY_PAGE = b"<html><body></body></html>"
+
+ARTICLE_PAGE = b"""<html><body><nav>Menu</nav><article><h1>One</h1>
+<p>The complete article text is considerably longer than the short feed excerpt.</p>
+<p>It continues with more details about the release and its impact on users.</p>
+</article></body></html>"""
+
+
+def test_opt_in_feed_stores_full_text_and_keeps_excerpt(
+    conn: sqlite3.Connection,
+) -> None:
+    feeds = FeedRepository(conn)
+    feed = feeds.add(NewFeed(url="https://news.example/rss", fetch_full_text=True))
+    pages = FakePageFetcher(
+        {
+            "https://news.example/1": ARTICLE_PAGE,
+            "https://news.example/2": FetchError("HTTP status 402"),
+        }
+    )
+    articles = ArticleRepository(conn)
+
+    (result,) = ingest_stored_feeds(
+        feeds,
+        FakeFetcher({feed.url: FEED_WITH_EXCERPTS}),
+        articles,
+        StepClock(),
+        fetch_page=pages,
+    )
+
+    assert result.ok and result.new == 2
+    assert pages.calls == ["https://news.example/1", "https://news.example/2"]
+    first = articles.get_by_url("https://news.example/1")
+    assert first is not None
+    assert first.analysis_basis == AnalysisBasis.FULL_TEXT
+    assert first.full_text is not None and "complete article text" in first.full_text
+    assert first.content == "Excerpt one"  # original excerpt kept
+    second = articles.get_by_url("https://news.example/2")
+    assert second is not None
+    assert second.analysis_basis == AnalysisBasis.EXCERPT
+    assert second.full_text is None
+    assert second.content == "Excerpt two"
+
+
+def test_feed_without_opt_in_never_fetches_pages(conn: sqlite3.Connection) -> None:
+    feeds = FeedRepository(conn)
+    feed = feeds.add(NewFeed(url="https://news.example/rss"))
+    pages = FakePageFetcher({})
+    articles = ArticleRepository(conn)
+
+    ingest_stored_feeds(
+        feeds,
+        FakeFetcher({feed.url: FEED_WITH_EXCERPTS}),
+        articles,
+        StepClock(),
+        fetch_page=pages,
+    )
+
+    assert pages.calls == []
+    article = articles.get_by_url("https://news.example/1")
+    assert article is not None
+    assert (article.analysis_basis, article.full_text) == (AnalysisBasis.EXCERPT, None)
+
+
+def test_url_ingestion_never_fetches_pages(repository: ArticleRepository) -> None:
+    fetch = FakeFetcher({"https://news.example/rss": FEED_WITH_EXCERPTS})
+
+    ingest_feeds(fetch.responses, fetch, repository, lambda: COLLECTED_AT)
+
+    article = repository.get_by_url("https://news.example/1")
+    assert article is not None and article.analysis_basis == AnalysisBasis.EXCERPT
+
+
+def test_unexpected_page_error_keeps_excerpt_and_feed_succeeds(
+    conn: sqlite3.Connection, caplog: pytest.LogCaptureFixture
+) -> None:
+    feeds = FeedRepository(conn)
+    feed = feeds.add(NewFeed(url="https://news.example/rss", fetch_full_text=True))
+    pages = FakePageFetcher(
+        {
+            "https://news.example/1": RuntimeError("secret detail"),
+            "https://news.example/2": ARTICLE_PAGE,
+        }
+    )
+    articles = ArticleRepository(conn)
+
+    with caplog.at_level(logging.WARNING):
+        (result,) = ingest_stored_feeds(
+            feeds,
+            FakeFetcher({feed.url: FEED_WITH_EXCERPTS}),
+            articles,
+            StepClock(),
+            fetch_page=pages,
+        )
+
+    assert result.ok and result.new == 2
+    first = articles.get_by_url("https://news.example/1")
+    second = articles.get_by_url("https://news.example/2")
+    assert first is not None and first.analysis_basis == AnalysisBasis.EXCERPT
+    assert second is not None and second.analysis_basis == AnalysisBasis.FULL_TEXT
+    assert "RuntimeError" in caplog.text and "secret detail" not in caplog.text
+    stored_feed = feeds.get_by_id(feed.id)
+    assert stored_feed is not None and stored_feed.last_error is None
+
+
+def test_known_articles_are_not_fetched_again(conn: sqlite3.Connection) -> None:
+    feeds = FeedRepository(conn)
+    feed = feeds.add(NewFeed(url="https://news.example/rss", fetch_full_text=True))
+    pages = FakePageFetcher(
+        {"https://news.example/1": ARTICLE_PAGE, "https://news.example/2": EMPTY_PAGE}
+    )
+    fetch = FakeFetcher({feed.url: FEED_WITH_EXCERPTS})
+    articles = ArticleRepository(conn)
+    clock = StepClock()
+    ingest_stored_feeds(feeds, fetch, articles, clock, fetch_page=pages)
+
+    ingest_stored_feeds(feeds, fetch, articles, clock, fetch_page=pages)
+
+    assert len(pages.calls) == 2  # only during the first run
+
+
+def test_cli_fetches_full_text_for_opt_in_feeds(tmp_path: Path) -> None:
+    db = tmp_path / "radar.db"
+    with open_database(db) as conn:
+        FeedRepository(conn).add(
+            NewFeed(url="https://news.example/rss", fetch_full_text=True)
+        )
+    pages = FakePageFetcher(
+        {"https://news.example/1": ARTICLE_PAGE, "https://news.example/2": EMPTY_PAGE}
+    )
+
+    code = main(
+        ["--db", str(db)],
+        FakeFetcher({"https://news.example/rss": FEED_WITH_EXCERPTS}),
+        pages,
+    )
+
+    assert code == 0
+    with closing(connect(db)) as conn:
+        articles = ArticleRepository(conn)
+        first = articles.get_by_url("https://news.example/1")
+        second = articles.get_by_url("https://news.example/2")
+    assert first is not None and first.analysis_basis == AnalysisBasis.FULL_TEXT
+    assert second is not None and second.analysis_basis == AnalysisBasis.EXCERPT

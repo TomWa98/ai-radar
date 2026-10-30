@@ -12,6 +12,13 @@ class ArticleStatus(StrEnum):
     FAILED = "failed"
 
 
+class AnalysisBasis(StrEnum):
+    """Which text an analysis uses: the extracted page or the feed excerpt."""
+
+    FULL_TEXT = "full_text"
+    EXCERPT = "excerpt"
+
+
 @dataclass(frozen=True, slots=True)
 class NewArticle:
     """An article as collected, before it has been stored."""
@@ -46,3 +53,5 @@ class Article:
     collected_at: datetime
     status: ArticleStatus
     feed_id: int | None
+    full_text: str | None = None
+    analysis_basis: AnalysisBasis | None = None  # None: collected before D3
