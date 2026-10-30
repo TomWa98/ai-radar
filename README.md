@@ -71,7 +71,20 @@ curl -X POST http://127.0.0.1:8000/api/refresh   # → 202 (gestartet) oder 409 
 curl http://127.0.0.1:8000/api/refresh           # → {"running": …, "last_started_at": …, "last_finished_at": …}
 ```
 
-Nach jedem Abruf im Serverprozess werden neue Artikel analysiert (Status `new` → `processing` → `analyzed` bzw. `failed`). Fehlgeschlagene Analysen werden in späteren Läufen erneut versucht, bis `AI_RADAR_ANALYSIS_MAX_ATTEMPTS` (Standard 3) erreicht ist; Fehlermeldung und Anzahl der Versuche werden gespeichert. `AI_RADAR_ANALYSIS_CONCURRENCY` (Standard 2) begrenzt gleichzeitige Analysen. Standard und derzeit einzige Option für `AI_RADAR_ANALYZER` ist `fake` (deterministischer FakeAnalyzer, keine kostenpflichtigen API-Aufrufe). Per CLI abgerufene Artikel werden beim nächsten Lauf des Servers analysiert.
+Nach jedem Abruf im Serverprozess werden neue Artikel analysiert (Status `new` → `processing` → `analyzed` bzw. `failed`). Fehlgeschlagene Analysen werden in späteren Läufen erneut versucht, bis `AI_RADAR_ANALYSIS_MAX_ATTEMPTS` (Standard 3) erreicht ist; Fehlermeldung und Anzahl der Versuche werden gespeichert. `AI_RADAR_ANALYSIS_CONCURRENCY` (Standard 2) begrenzt gleichzeitige Analysen. Standard für `AI_RADAR_ANALYZER` ist `fake` (deterministischer FakeAnalyzer, keine kostenpflichtigen API-Aufrufe).
+
+### OpenAI-Analyzer (kostenpflichtig)
+
+`AI_RADAR_ANALYZER=openai` nutzt die OpenAI-API (Chat Completions mit strukturierter JSON-Ausgabe). Der Server startet damit nur, wenn alle folgenden Umgebungsvariablen gesetzt sind:
+
+| Variable | Bedeutung |
+|---|---|
+| `OPENAI_API_KEY` | API-Schlüssel (nur in der Umgebung, nie einchecken) |
+| `AI_RADAR_OPENAI_MODEL` | Modellname |
+| `AI_RADAR_OPENAI_INPUT_PRICE_PER_MTOK`, `AI_RADAR_OPENAI_OUTPUT_PRICE_PER_MTOK` | Preis je 1 Mio. Input-/Output-Token (> 0) |
+| `AI_RADAR_MONTHLY_BUDGET` | Monatsbudget in derselben Währung; Standard `0` = keine Live-Aufrufe (Startfehler) |
+
+Token-Verbrauch und geschätzte Kosten werden je Aufruf in `llm_calls` gespeichert. Ist das Budget im laufenden Kalendermonat (UTC) erreicht, finden keine weiteren Aufrufe statt; betroffene Artikel werden mit dem Grund „Budget“ als `failed` markiert und ohne Verbrauch eines Versuchs später erneut analysiert. Per CLI abgerufene Artikel werden beim nächsten Lauf des Servers analysiert.
 
 Manuelle und automatische Abrufe laufen nie gleichzeitig. Anfragen, die ein Browser von einer fremden Website sendet (`Origin` nicht `127.0.0.1`/`localhost`), werden mit `403` abgelehnt.
 

@@ -100,10 +100,10 @@ def run(
 # --- Settings ------------------------------------------------------------
 
 
-def test_default_settings_use_fake_analyzer() -> None:
+def test_default_settings_use_fake_analyzer(tmp_path: Path) -> None:
     settings = AnalysisSettings.from_env({})
     assert settings == AnalysisSettings("fake", 3, 2)
-    assert isinstance(settings.create_analyzer(), FakeAnalyzer)
+    assert isinstance(settings.create_analyzer(tmp_path / "x.db"), FakeAnalyzer)
 
 
 def test_settings_from_env() -> None:
@@ -120,7 +120,7 @@ def test_settings_from_env() -> None:
 @pytest.mark.parametrize(
     ("name", "value"),
     [
-        ("AI_RADAR_ANALYZER", "openai"),
+        ("AI_RADAR_ANALYZER", "gpt"),
         ("AI_RADAR_ANALYSIS_MAX_ATTEMPTS", "0"),
         ("AI_RADAR_ANALYSIS_MAX_ATTEMPTS", "many"),
         ("AI_RADAR_ANALYSIS_CONCURRENCY", "-2"),
@@ -399,7 +399,7 @@ def test_unknown_analyzer_fails_startup(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv(DB_PATH_ENV, str(tmp_path / "api.db"))
-    monkeypatch.setenv("AI_RADAR_ANALYZER", "openai")
+    monkeypatch.setenv("AI_RADAR_ANALYZER", "gpt")
 
     with pytest.raises(ValueError, match="Unknown analyzer"):
         with TestClient(app, base_url="http://127.0.0.1"):

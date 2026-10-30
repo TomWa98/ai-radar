@@ -147,10 +147,19 @@ class ArticleRepository:
     def mark_analyzed(self, article_id: int) -> None:
         self._finish_attempt(article_id, ArticleStatus.ANALYZED, None)
 
-    def mark_failed(self, article_id: int, error: str) -> None:
-        """Record a failed attempt; ``error`` must already be safe to show."""
+    def mark_failed(
+        self, article_id: int, error: str, *, count_attempt: bool = True
+    ) -> None:
+        """Record a failure; ``error`` must already be safe to show.
+
+        With ``count_attempt=False`` (e.g. budget exhausted) the attempt does
+        not count towards the maximum number of attempts.
+        """
         self._finish_attempt(
-            article_id, ArticleStatus.FAILED, error[:MAX_ANALYSIS_ERROR_LENGTH]
+            article_id,
+            ArticleStatus.FAILED,
+            error[:MAX_ANALYSIS_ERROR_LENGTH],
+            count_attempt=count_attempt,
         )
 
     def reset_interrupted(self) -> int:
@@ -165,15 +174,20 @@ class ArticleRepository:
         return cursor.rowcount
 
     def _finish_attempt(
-        self, article_id: int, status: ArticleStatus, error: str | None
+        self,
+        article_id: int,
+        status: ArticleStatus,
+        error: str | None,
+        *,
+        count_attempt: bool = True,
     ) -> None:
         with transaction(self._conn):
             self._conn.execute(
                 """
                 UPDATE articles
                 SET status = ?, analysis_error = ?,
-                    analysis_attempts = analysis_attempts + 1
+                    analysis_attempts = analysis_attempts + ?
                 WHERE id = ? AND status = 'processing'
                 """,
-                (status, error, article_id),
+                (status, error, 1 if count_attempt else 0, article_id),
             )

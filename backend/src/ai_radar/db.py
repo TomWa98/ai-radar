@@ -124,6 +124,22 @@ _V6_ANALYSIS_STATUS: Migration = (
     "CREATE INDEX articles_status ON articles (status)",
 )
 
+# One row per paid LLM API call that returned usage (D5), including calls whose
+# output was rejected; the monthly budget is checked against these rows.
+_V7_LLM_CALLS: Migration = (
+    """
+    CREATE TABLE llm_calls (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        called_at      TEXT NOT NULL,
+        model          TEXT NOT NULL,
+        input_tokens   INTEGER NOT NULL CHECK (input_tokens >= 0),
+        output_tokens  INTEGER NOT NULL CHECK (output_tokens >= 0),
+        estimated_cost REAL NOT NULL CHECK (estimated_cost >= 0)
+    )
+    """,
+    "CREATE INDEX llm_calls_called_at ON llm_calls (called_at)",
+)
+
 MIGRATIONS: tuple[Migration, ...] = (
     (_V1_ARTICLES,),
     (_V2_FEEDS,),
@@ -131,6 +147,7 @@ MIGRATIONS: tuple[Migration, ...] = (
     _V4_FULL_TEXT,
     _V5_ANALYSES,
     _V6_ANALYSIS_STATUS,
+    _V7_LLM_CALLS,
 )
 
 SCHEMA_VERSION = len(MIGRATIONS)

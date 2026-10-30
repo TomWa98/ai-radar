@@ -10,7 +10,8 @@ all database writes happen on the calling thread with its own connection.
 Articles left in ``processing`` by a crash are returned to ``new`` at startup.
 
 By default the deterministic FakeAnalyzer is used, so no paid API is called
-unless a real analyzer is configured explicitly (D5).
+unless the OpenAI analyzer is configured explicitly, including a monthly
+budget greater than zero (D5).
 """
 
 import logging
@@ -19,16 +20,24 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 
 from pydantic import ValidationError
 
-from ai_radar.analysis.analyzer import AnalysisError, Analyzer, FakeAnalyzer
+from ai_radar.analysis.analyzer import (
+    AnalysisError,
+    Analyzer,
+    BudgetExceededError,
+    FakeAnalyzer,
+)
+from ai_radar.analysis.ledger import UsageLedger
 from ai_radar.analysis.models import (
     AnalysisInput,
     AnalysisResult,
     Interest,
     LearnedPreference,
 )
+from ai_radar.analysis.openai import OpenAIAnalyzer, OpenAIConfig
 from ai_radar.analysis.repository import AnalysisRepository
 from ai_radar.articles.models import AnalysisBasis, Article
 from ai_radar.articles.repository import ArticleRepository
@@ -45,7 +54,7 @@ DEFAULT_CONCURRENCY = 2
 
 Clock = Callable[[], datetime]
 
-_ANALYZERS: dict[str, Callable[[], Analyzer]] = {"fake": FakeAnalyzer}
+ANALYZERS = ("fake", "openai")
 
 
 def _now() -> datetime:
@@ -70,21 +79,28 @@ class AnalysisSettings:
     analyzer: str = DEFAULT_ANALYZER
     max_attempts: int = DEFAULT_MAX_ATTEMPTS
     concurrency: int = DEFAULT_CONCURRENCY
+    openai: OpenAIConfig | None = None  # required for analyzer "openai"
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str]) -> "AnalysisSettings":
         """Read the settings; raise ``ValueError`` for invalid values."""
         analyzer = environ.get(ANALYZER_ENV, "").strip().lower() or DEFAULT_ANALYZER
-        if analyzer not in _ANALYZERS:
+        if analyzer not in ANALYZERS:
             raise ValueError(f"Unknown analyzer: {analyzer!r}")
+        openai = OpenAIConfig.from_env(environ) if analyzer == "openai" else None
         return cls(
             analyzer=analyzer,
             max_attempts=_positive_int(environ, MAX_ATTEMPTS_ENV, DEFAULT_MAX_ATTEMPTS),
             concurrency=_positive_int(environ, CONCURRENCY_ENV, DEFAULT_CONCURRENCY),
+            openai=openai,
         )
 
-    def create_analyzer(self) -> Analyzer:
-        return _ANALYZERS[self.analyzer]()
+    def create_analyzer(self, db_path: Path) -> Analyzer:
+        if self.analyzer == "openai":
+            if self.openai is None:
+                raise ValueError("The OpenAI analyzer is not configured")
+            return OpenAIAnalyzer(self.openai, UsageLedger(db_path))
+        return FakeAnalyzer()
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,7 +176,11 @@ def analyze_pending(
                     logger.warning(
                         "Analysis of article %d failed: %s", article.id, message
                     )
-                    articles.mark_failed(article.id, message)
+                    articles.mark_failed(
+                        article.id,
+                        message,
+                        count_attempt=not isinstance(exc, BudgetExceededError),
+                    )
                     failed += 1
                 else:
                     articles.mark_analyzed(article.id)
