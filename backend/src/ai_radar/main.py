@@ -40,6 +40,7 @@ from ai_radar.ingest.scheduler import (
     ingest_and_analyze_once,
     run_periodically,
 )
+from ai_radar.interests.api import router as interests_router
 from ai_radar.security import LOCAL_HOSTS
 
 DB_PATH_ENV = "AI_RADAR_DB"
@@ -82,6 +83,7 @@ app = FastAPI(title="AI Radar", lifespan=lifespan)
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 app.include_router(feeds_router)
 app.include_router(refresh_router)
+app.include_router(interests_router)
 
 
 @app.get("/health")
