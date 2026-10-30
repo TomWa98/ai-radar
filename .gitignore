@@ -31,3 +31,6 @@ coverage/
 
 # Local Claude Code settings
 .claude/settings.local.json
+
+# Python packaging artifacts
+*.egg-info/

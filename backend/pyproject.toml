@@ -16,6 +16,8 @@ dependencies = [
 dev = [
     "pytest>=8",
     "httpx2>=2.0",
+    "ruff>=0.6",
+    "pip-audit>=2.7",
 ]
 
 [tool.setuptools.packages.find]
@@ -23,3 +25,10 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]

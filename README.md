@@ -65,6 +65,29 @@ Die interaktive API-Dokumentation ist unter http://127.0.0.1:8000/docs erreichba
 .venv/bin/pytest backend
 ```
 
+## Continuous Integration
+
+Die GitHub-Actions-Pipeline (`.github/workflows/ci.yml`) läuft bei Pull Requests gegen `main` und bei Pushes auf `main`. Jeder Befund lässt die Pipeline fehlschlagen.
+
+| Job | Prüfung |
+|---|---|
+| Backend (Python 3.12 und 3.14) | Ruff-Linting (`E`, `F`, `I`, `B`) und pytest |
+| Backend (nur Python 3.14) | `pip-audit`: bekannte Schwachstellen in installierten Python-Paketen |
+| Gitleaks | Secret-Scan über die gesamte Git-Historie |
+| Semgrep | Statische Sicherheitsanalyse von `backend/` mit dem öffentlichen Regelsatz `p/python`, ohne Semgrep-Account |
+
+Der Workflow hat nur Leserechte (`contents: read`). Actions sind auf Commit-SHAs, Docker-Images auf Digests gepinnt.
+
+Lokal ausführen (aus dem Projektverzeichnis):
+
+```bash
+cd backend
+../.venv/bin/ruff check .
+../.venv/bin/pytest
+../.venv/bin/pip-audit --skip-editable
+cd .. && gitleaks git .            # erfordert eine lokale Gitleaks-Installation
+```
+
 ## Geplanter Entwicklungsansatz
 
 Kleine, überprüfbare Änderungen statt einer Komplettimplementierung in einem Schritt. Jede Funktion wird gegen die Anforderungen entwickelt und getestet; Architekturänderungen werden bewusst entschieden und dokumentiert.
