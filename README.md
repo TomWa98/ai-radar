@@ -116,6 +116,7 @@ Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz un
 | Parameter | Bedeutung |
 |---|---|
 | `lang` | `de` (Standard) oder `en` – Sprache von Zusammenfassung und Begründung; Kategorien und Scores sind sprachunabhängig |
+| `q` | Freitextsuche in Titel, Auszug und extrahiertem Volltext (alle Wörter müssen vorkommen; Akzente werden ignoriert; max. 200 Zeichen / 20 Wörter); kombinierbar mit allen Filtern |
 | `category` | `Releases`, `Features`, `Security`, `Use Cases`, `Other` (Haupt- oder Nebenkategorie) |
 | `min_relevance` | Mindest-Relevanz 1–5 |
 | `published_from`, `published_to` | Zeitraum (ISO 8601 mit Zeitzone; ohne Veröffentlichungsdatum gilt der Abrufzeitpunkt) |
@@ -124,6 +125,8 @@ Beim Anlegen wird der Feed nicht abgerufen. Die API hat keinen Zugriffsschutz un
 | `since` | nur Artikel, die sich danach geändert haben (neu, analysiert, Analyseversuch, Feedback) |
 
 Die Antwort enthält `items`, `total` und `next_since`; für Polling `next_since` als nächstes `since` übergeben (kleine Überlappung, Artikel können doppelt kommen). Nicht analysierte Artikel erscheinen mit ihrem Status. Titel, Auszug (`excerpt`, kann HTML enthalten), Zusammenfassung und Begründung sind nicht vertrauenswürdige Texte und müssen als Text dargestellt werden. Ungültige Parameter ergeben `422`.
+
+Die Suche nutzt SQLite FTS5 (D7). Fehlt FTS5 in der SQLite-Version von Python, bricht der Start mit einer klaren Fehlermeldung ab.
 
 ## Interessen verwalten (API)
 

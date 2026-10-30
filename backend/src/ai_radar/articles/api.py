@@ -15,6 +15,7 @@ from pydantic import AfterValidator, BaseModel
 from ai_radar.analysis.models import Category
 from ai_radar.articles.listing import (
     MAX_PAGE_SIZE,
+    MAX_SEARCH_LENGTH,
     ArticleQuery,
     Language,
     ListedArticle,
@@ -115,6 +116,7 @@ class ArticleListOut(BaseModel):
 def get_articles(
     request: Request,
     lang: Language = "de",
+    q: Annotated[str | None, Query(max_length=MAX_SEARCH_LENGTH)] = None,
     category: Category | None = None,
     min_relevance: Annotated[int | None, Query(ge=1, le=5)] = None,
     published_from: AwareDatetime = None,
@@ -132,6 +134,7 @@ def get_articles(
     started = datetime.now(UTC)
     query = ArticleQuery(
         lang=lang,
+        search=q,
         category=category,
         min_relevance=min_relevance,
         published_from=published_from,
@@ -143,7 +146,12 @@ def get_articles(
     )
     db_path: Path = request.app.state.db_path
     with closing(connect(db_path)) as conn:
-        page = list_articles(conn, query)
+        try:
+            page = list_articles(conn, query)
+        except ValueError as exc:  # e.g. too many search terms
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)
+            ) from None
     return ArticleListOut(
         items=[ArticleOut.from_item(item) for item in page.items],
         total=page.total,
