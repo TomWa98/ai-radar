@@ -11,9 +11,9 @@
 - **Backend (FastAPI, SQLite):** Feed-Verwaltung, Abruf alle 15 Minuten und manuell (`/api/refresh`, CLI), Deduplizierung, optionaler Volltext (`trafilatura`) mit SSRF-Schutz.
 - **Analyse:** Zusammenfassung, Kategorie, Bedeutung und persönliche Relevanz mit Begründung (DE/EN). Standard ist der kostenlose FakeAnalyzer; OpenAI ist optional und budgetbegrenzt.
 - **Suche und Personalisierung:** Volltextsuche (FTS5) und Filter, manuelle Interessen, Relevanzfeedback und daraus gelernte Präferenzen.
-- **Frontend (React, TypeScript, Vite):** Übersicht (Editorial Grid mit Suche, Filtern, Sortierung, Feedback, Aktualisierung), Interessen & Personalisierung, DE/EN-Umschaltung.
+- **Frontend (React, TypeScript, Vite):** Übersicht (Editorial Grid mit Suche, Filtern, Sortierung, Feedback, Aktualisierung), Interessen & Personalisierung, Quellen (Feeds verwalten, Abruf manuell starten, letzter Abruf und Fehler je Feed), DE/EN-Umschaltung.
 
-**Offen:** Quellen-Ansicht im Frontend (#28), News-Wall (#29), Docker-Compose-Betrieb, Zugriff aus dem LAN.
+**Offen:** News-Wall (#29), Docker-Compose-Betrieb, Zugriff aus dem LAN.
 
 ## Lokal starten
 
@@ -29,7 +29,7 @@ cd backend && ../.venv/bin/uvicorn ai_radar.main:app --reload
 cd frontend && npm ci --ignore-scripts && npm run dev
 ```
 
-Der Vite-Dev-Server leitet `/api` und `/health` an das Backend weiter. Feeds werden bis zur Quellen-Ansicht über die API angelegt (`POST /api/feeds`, siehe `/docs`); per CLI abrufen: `.venv/bin/python -m ai_radar.ingest --db ai-radar.db`.
+Der Vite-Dev-Server leitet `/api` und `/health` an das Backend weiter. Feeds werden in der Ansicht „Quellen“ angelegt; ein Abruf per CLI ist ebenfalls möglich: `.venv/bin/python -m ai_radar.ingest --db ai-radar.db`.
 
 ## Konfiguration
 
