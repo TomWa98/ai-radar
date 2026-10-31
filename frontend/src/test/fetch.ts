@@ -19,6 +19,12 @@ export function json(body: unknown, status = 200): Response {
   });
 }
 
+export const IDLE_REFRESH = {
+  running: false,
+  last_started_at: null,
+  last_finished_at: null,
+};
+
 export const EMPTY_PAGE = {
   items: [],
   total: 0,
@@ -28,8 +34,9 @@ export const EMPTY_PAGE = {
 };
 
 /**
- * Stub `fetch` for the app: `/health` is healthy and `/api/articles` returns
- * an empty page unless a route answers first. Returns the recorded calls.
+ * Stub `fetch` for the app: `/health` is healthy, `/api/articles` returns
+ * an empty page, and `/api/refresh` reports no refresh yet, unless a route
+ * answers first. Returns the recorded calls.
  */
 export function stubApi(...routes: Route[]): Call[] {
   const calls: Call[] = [];
@@ -46,6 +53,9 @@ export function stubApi(...routes: Route[]): Call[] {
       }
       if (url.pathname === "/health") return json({ status: "ok" });
       if (url.pathname === "/api/articles") return json(EMPTY_PAGE);
+      if (url.pathname === "/api/refresh" && (init?.method ?? "GET") === "GET") {
+        return json(IDLE_REFRESH);
+      }
       return json({ detail: "Not found" }, 404);
     }),
   );
