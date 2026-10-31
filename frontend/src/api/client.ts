@@ -20,10 +20,22 @@ async function errorDetail(response: Response): Promise<string | null> {
     if (
       typeof body === "object" &&
       body !== null &&
-      "detail" in body &&
-      typeof body.detail === "string"
+      "detail" in body
     ) {
-      return body.detail;
+      if (typeof body.detail === "string") {
+        return body.detail;
+      }
+      // FastAPI request validation (422): a list of `{ msg, ... }` objects.
+      if (Array.isArray(body.detail)) {
+        const messages = body.detail
+          .map((item: unknown) =>
+            typeof item === "object" && item !== null && "msg" in item ? item.msg : null,
+          )
+          .filter((msg): msg is string => typeof msg === "string" && msg.length > 0);
+        if (messages.length > 0) {
+          return messages.join("; ");
+        }
+      }
     }
   } catch {
     // Not JSON: fall back to the status code.

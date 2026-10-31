@@ -4,12 +4,17 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { LanguageProvider } from "./i18n/language";
+import { RefreshProvider } from "./refresh/RefreshContext";
 import { AppShell } from "./shell/AppShell";
 import type { NavItem } from "./shell/navigation";
 import { json, stubApi } from "./test/fetch";
 
 function withLanguage(ui: ReactNode) {
-  return <LanguageProvider>{ui}</LanguageProvider>;
+  return (
+    <LanguageProvider>
+      <RefreshProvider>{ui}</RefreshProvider>
+    </LanguageProvider>
+  );
 }
 
 /** The backend status shown in the top bar. */
@@ -35,7 +40,7 @@ describe("App shell", () => {
     await screen.findByText("Backend reachable");
   });
 
-  it("links Overview and Interests, disables the others, and hides Articles", async () => {
+  it("links Overview, Interests, and Sources, disables News Wall, and hides Articles", async () => {
     stubApi();
     render(<App />);
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
@@ -45,12 +50,76 @@ describe("App shell", () => {
     expect(overview.getAttribute("aria-current")).toBe("page");
     const interests = within(nav).getByRole("link", { name: "Interests" });
     expect(interests.getAttribute("href")).toBe("#/interests");
-    for (const label of ["Sources", "News Wall"]) {
-      const item = within(nav).getByText(label).closest("[aria-disabled]");
-      expect(item?.getAttribute("aria-disabled")).toBe("true");
-    }
-    expect(within(nav).getAllByRole("link")).toHaveLength(2);
+    const sources = within(nav).getByRole("link", { name: "Sources" });
+    expect(sources.getAttribute("href")).toBe("#/sources");
+    const wall = within(nav).getByText("News Wall").closest("[aria-disabled]");
+    expect(wall?.getAttribute("aria-disabled")).toBe("true");
+    expect(within(nav).getAllByRole("link")).toHaveLength(3);
     expect(within(nav).queryByText("Articles")).toBeNull();
+    await screen.findByText("Backend reachable");
+  });
+});
+
+describe("Sources route", () => {
+  it("shows feed management at #/sources", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    window.location.hash = "#/sources";
+    stubApi((url) => (url.pathname === "/api/feeds" ? json([]) : undefined));
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Sources");
+    const nav = screen.getByRole("navigation", { name: "Main navigation" });
+    expect(within(nav).getByRole("link", { name: "Sources" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    expect(await screen.findByText("No feeds yet. Add an RSS or Atom feed above.")).toBeTruthy();
+    await screen.findByText("Backend reachable");
+  });
+});
+
+describe("Top bar refresh status", () => {
+  it("labels the time as the last completed refresh", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    stubApi((url) =>
+      url.pathname === "/api/refresh"
+        ? json({
+            running: false,
+            last_started_at: "2026-10-30T11:58:00Z",
+            last_finished_at: "2026-10-30T12:00:00Z",
+          })
+        : undefined,
+    );
+    render(<App />);
+    const banner = screen.getByRole("banner");
+
+    await waitFor(() =>
+      expect(banner.textContent).toContain("Last completed refresh:"),
+    );
+    expect(banner.textContent).not.toMatch(/successful/i);
+    expect(within(banner).getByText(/30 Oct 2026/)).toBeTruthy();
+    await screen.findByText("Backend reachable");
+  });
+
+  it("uses the German label „Letzter abgeschlossener Abruf“", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("de-DE");
+    stubApi();
+    render(<App />);
+    const banner = screen.getByRole("banner");
+
+    await waitFor(() =>
+      expect(banner.textContent).toContain("Letzter abgeschlossener Abruf: noch keiner"),
+    );
+    await screen.findByText("Backend erreichbar");
+  });
+
+  it("says when the refresh status is unavailable", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    stubApi((url) =>
+      url.pathname === "/api/refresh" ? json({ detail: "boom" }, 500) : undefined,
+    );
+    render(<App />);
+
+    expect(await screen.findByText("Refresh status unavailable")).toBeTruthy();
     await screen.findByText("Backend reachable");
   });
 });

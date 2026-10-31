@@ -5,6 +5,7 @@ import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/overview.css";
 import "./styles/interests.css";
+import "./styles/sources.css";
 
 const root = document.getElementById("root");
 if (!root) {
