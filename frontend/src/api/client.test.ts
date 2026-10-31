@@ -48,6 +48,35 @@ describe("apiGet errors", () => {
     expect(error).toMatchObject({ message: "Feed not found", status: 404 });
   });
 
+  it("joins the messages of a FastAPI validation error", async () => {
+    mockFetch(async () =>
+      json(
+        {
+          detail: [
+            { loc: ["body", "url"], msg: "Value error, Unsupported URL scheme: ftp" },
+            { loc: ["body", "name"], msg: "String should have at most 200 characters" },
+            { loc: ["body"], msg: 7 },
+          ],
+        },
+        422,
+      ),
+    );
+
+    await expect(apiSend("POST", "/api/feeds", {})).rejects.toMatchObject({
+      message:
+        "Value error, Unsupported URL scheme: ftp; String should have at most 200 characters",
+      status: 422,
+    });
+  });
+
+  it("falls back to the status for a validation error without messages", async () => {
+    mockFetch(async () => json({ detail: [{ loc: ["body"] }] }, 422));
+
+    await expect(apiSend("POST", "/api/feeds", {})).rejects.toMatchObject({
+      message: "HTTP 422",
+    });
+  });
+
   it("falls back to the status for non-JSON errors", async () => {
     mockFetch(async () => new Response("Internal Server Error", { status: 500 }));
 

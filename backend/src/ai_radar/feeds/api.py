@@ -86,6 +86,8 @@ class FeedOut(BaseModel):
     fetch_full_text: bool
     created_at: datetime
     updated_at: datetime
+    last_fetched_at: datetime | None
+    last_error: str | None  # safe message of the last failed fetch; plain text
 
     @classmethod
     def from_feed(cls, feed: Feed) -> Self:
@@ -97,6 +99,8 @@ class FeedOut(BaseModel):
             fetch_full_text=feed.fetch_full_text,
             created_at=feed.created_at,
             updated_at=feed.updated_at,
+            last_fetched_at=feed.last_fetched_at,
+            last_error=feed.last_error,
         )
 
 

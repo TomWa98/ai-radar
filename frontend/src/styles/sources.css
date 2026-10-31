@@ -1,0 +1,242 @@
+/* Sources: feed management and manual refresh. Buttons, controls, panels,
+   .confirm, and .visually-hidden come from overview.css and interests.css. */
+
+.sources__header {
+  margin-bottom: var(--space-5);
+}
+
+.sources__intro {
+  color: var(--color-text-secondary);
+  margin: 0;
+  max-width: 72ch;
+}
+
+/* Refresh panel beside the feed list on wide screens, stacked otherwise. */
+.sources__sections {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 1200px) {
+  .sources__sections {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+}
+
+.panel__meta p {
+  margin: 0;
+}
+
+.sources__running {
+  color: var(--color-text-primary);
+}
+
+.feed-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.feed-form--edit {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  flex-basis: 100%;
+}
+
+.feed-form__title {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+
+.feed-form__field label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.feed-form__wide {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.feed-form__wide .control {
+  width: 100%;
+}
+
+.feed-form .control[aria-invalid="true"] {
+  border-width: 2px;
+  border-color: var(--color-text-primary);
+}
+
+.feed-form__checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  flex-basis: 100%;
+}
+
+.feed-form__check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  font-size: var(--font-size-sm);
+}
+
+/* Native checkbox; the accent keeps the monochrome palette and its outline
+   meets WCAG 1.4.11 (decision 8). */
+.checkbox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-accent);
+  color-scheme: dark;
+}
+
+.checkbox:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.feed-form__hint {
+  flex-basis: 100%;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--color-border-interactive);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.feed-form__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.feed-form__error {
+  flex-basis: 100%;
+  font-size: var(--font-size-sm);
+}
+
+.feed-form__error p {
+  margin: 0;
+}
+
+.feed-form .button[aria-disabled="true"],
+.sources .button[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feed-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.feed-item:first-child {
+  border-top: 0;
+}
+
+.feed-item__head {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.feed-item__name {
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+.feed-item__url {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.feed-item__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+}
+
+.tag--muted {
+  color: var(--color-text-secondary);
+}
+
+.feed-item__meta,
+.feed-item__error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.feed-item__error {
+  color: var(--color-text-primary);
+}
+
+.feed-item__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.feed-item > .confirm {
+  flex-basis: 100%;
+}
+
+.refresh-status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.refresh-status:empty {
+  display: none;
+}
+
+.refresh-status__running {
+  color: var(--color-text-primary);
+}
+
+/* The fixed-height top bar has no room for the status on narrow screens; the
+   Sources view shows the same information there. */
+@media (max-width: 719px) {
+  .refresh-status {
+    display: none;
+  }
+}

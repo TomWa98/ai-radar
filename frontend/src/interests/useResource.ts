@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { QueryState } from "../api/useLocalizedQuery";
 
 export interface Resource<T> {
   state: QueryState<T>;
   /** Load again, showing the loading state. */
   reload: () => void;
+  /**
+   * Load again in the background: the current data stays shown and is
+   * replaced only by a successful answer; a failure keeps it.
+   */
+  revalidate: () => void;
   /** Replace the loaded data, e.g. after a successful change. */
   update: (change: (data: T) => T) => void;
 }
@@ -32,6 +37,25 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>): Resou
   }, [load, attempt]);
 
   const reload = useCallback(() => setAttempt((count) => count + 1), []);
+
+  const background = useRef<AbortController | null>(null);
+  useEffect(() => () => background.current?.abort(), []);
+  const revalidate = useCallback(() => {
+    background.current?.abort();
+    const controller = new AbortController();
+    background.current = controller;
+    load(controller.signal).then(
+      (data) =>
+        setState((current) =>
+          current.status === "success" && !controller.signal.aborted
+            ? { status: "success", data }
+            : current,
+        ),
+      () => {
+        // Keep showing the current data.
+      },
+    );
+  }, [load]);
   const update = useCallback(
     (change: (data: T) => T) =>
       setState((current) =>
@@ -39,5 +63,5 @@ export function useResource<T>(load: (signal: AbortSignal) => Promise<T>): Resou
       ),
     [],
   );
-  return { state, reload, update };
+  return { state, reload, revalidate, update };
 }

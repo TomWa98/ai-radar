@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import { LanguageSwitch } from "../i18n/LanguageSwitch";
 import { useLanguage } from "../i18n/language";
+import { RefreshStatus } from "../refresh/RefreshStatus";
 import { HealthStatus } from "./HealthStatus";
 import { NAV_ITEMS, hrefFor, type NavItem, type RouteId } from "./navigation";
 
@@ -28,6 +29,7 @@ export function AppShell({ items = NAV_ITEMS, current, children }: AppShellProps
       <header className="topbar">
         <span className="topbar__product">{t.productName}</span>
         <div className="topbar__status">
+          <RefreshStatus />
           <HealthStatus />
           <LanguageSwitch />
         </div>

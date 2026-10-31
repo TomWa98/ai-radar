@@ -23,10 +23,11 @@ describe("routeFromHash", () => {
     expect(routeFromHash("#/overview", none)).toBeNull();
   });
 
-  it("makes Overview and Interests available so far", () => {
+  it("makes Overview, Interests, and Sources available so far", () => {
     expect(NAV_ITEMS.filter((item) => item.available).map((item) => item.id)).toEqual([
       "overview",
       "interests",
+      "sources",
     ]);
     expect(routeFromHash("", NAV_ITEMS)).toBe("overview");
   });

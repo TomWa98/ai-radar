@@ -1,10 +1,13 @@
 import sqlite3
 from collections.abc import Iterator
+from contextlib import closing
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from ai_radar.db import connect
 from ai_radar.feeds.repository import FeedRepository
 from ai_radar.main import DB_PATH_ENV, app
 
@@ -52,12 +55,34 @@ def test_create_returns_feed_with_defaults(client: TestClient) -> None:
         "fetch_full_text",
         "created_at",
         "updated_at",
+        "last_fetched_at",
+        "last_error",
     }
+    assert feed["last_fetched_at"] is None
+    assert feed["last_error"] is None
 
 
 def test_create_trims_name_and_treats_blank_as_missing(client: TestClient) -> None:
     assert create(client, name="  Example  ")["name"] == "Example"
     assert create(client, url="https://b.example/rss", name="   ")["name"] is None
+
+
+def test_list_shows_last_fetch_and_error(client: TestClient, db_path: Path) -> None:
+    ok = create(client, url="https://a.example/rss")
+    failing = create(client, url="https://b.example/rss")
+    with closing(connect(db_path)) as conn:
+        feeds = FeedRepository(conn)
+        feeds.record_fetch(ok["id"], datetime(2026, 10, 30, 12, 0, tzinfo=UTC))
+        feeds.record_fetch(
+            failing["id"], datetime(2026, 10, 30, 13, 0, tzinfo=UTC), "HTTP 500"
+        )
+
+    listed = {feed["id"]: feed for feed in client.get("/api/feeds").json()}
+
+    assert listed[ok["id"]]["last_fetched_at"].startswith("2026-10-30T12:00:00")
+    assert listed[ok["id"]]["last_error"] is None
+    assert listed[failing["id"]]["last_fetched_at"].startswith("2026-10-30T13:00:00")
+    assert listed[failing["id"]]["last_error"] == "HTTP 500"
 
 
 def test_list_returns_created_feeds(client: TestClient) -> None:
