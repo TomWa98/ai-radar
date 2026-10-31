@@ -1,4 +1,5 @@
 import { Overview } from "./articles/Overview";
+import { Interests } from "./interests/Interests";
 import { LanguageProvider, useLanguage } from "./i18n/language";
 import { AppShell } from "./shell/AppShell";
 import { useHashRoute } from "./shell/navigation";
@@ -15,11 +16,13 @@ function Shell() {
   const route = useHashRoute();
   const { t } = useLanguage();
 
-  // Further views follow in their own issues (#27, #28, #29).
+  // Further views follow in their own issues (#28, #29).
   return (
     <AppShell current={route}>
       {route === "overview" ? (
         <Overview />
+      ) : route === "interests" ? (
+        <Interests />
       ) : (
         <section className="empty-state" aria-labelledby="empty-title">
           <h1 id="empty-title">{t.noViewTitle}</h1>
