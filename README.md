@@ -13,7 +13,7 @@
 - **Suche und Personalisierung:** Volltextsuche (FTS5) und Filter, manuelle Interessen, Relevanzfeedback und daraus gelernte Präferenzen.
 - **Frontend (React, TypeScript, Vite):** Übersicht (Editorial Grid mit Suche, Filtern, Sortierung, Feedback, Aktualisierung), Interessen & Personalisierung, Quellen (Feeds verwalten, Abruf manuell starten, letzter Abruf und Fehler je Feed), News-Wall für Vollbild und Dauerbetrieb (`#/news-wall`), DE/EN-Umschaltung.
 
-**Offen:** Docker-Compose-Betrieb, Zugriff aus dem LAN.
+**Offen:** Zugriff aus dem LAN.
 
 ## Lokal starten
 
@@ -30,6 +30,10 @@ cd frontend && npm ci --ignore-scripts && npm run dev
 ```
 
 Der Vite-Dev-Server leitet `/api` und `/health` an das Backend weiter. Feeds werden in der Ansicht „Quellen“ angelegt; ein Abruf per CLI ist ebenfalls möglich: `.venv/bin/python -m ai_radar.ingest --db ai-radar.db`.
+
+## Betrieb mit Docker Compose
+
+Für den Dauerbetrieb auf Ubuntu: `cp .env.example .env`, dann `docker compose up -d --build`. Die Anwendung ist nur auf dem Rechner selbst unter <http://127.0.0.1:8080> erreichbar. Update, Sicherheitskonzept, Einschränkungen und Testablauf stehen in [`docs/deployment.md`](docs/deployment.md).
 
 ## Konfiguration
 
