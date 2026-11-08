@@ -1,6 +1,7 @@
 """FastAPI application entry point.
 
-Configuration (environment variables):
+Configuration (environment variables; at startup a ``.env`` file in the
+repository root fills in those that are not set, see ``ai_radar.config``):
 
 * ``AI_RADAR_DB``: SQLite database file (default ``ai-radar.db`` in the
   working directory).
@@ -32,6 +33,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from ai_radar.analysis.pipeline import AnalysisSettings
 from ai_radar.articles.api import router as articles_router
 from ai_radar.articles.repository import ArticleRepository
+from ai_radar.config import load_env_file
 from ai_radar.db import open_database
 from ai_radar.feedback.api import router as feedback_router
 from ai_radar.feeds.api import router as feeds_router
@@ -55,6 +57,7 @@ ALLOWED_HOSTS = list(LOCAL_HOSTS)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Prepare the database, then run the feed scheduler until shutdown."""
+    load_env_file()  # must stay first: everything below reads the environment
     interval = fetch_interval_seconds(os.environ.get(FETCH_INTERVAL_ENV))
     analysis = AnalysisSettings.from_env(os.environ)
     db_path = Path(os.environ.get(DB_PATH_ENV, DEFAULT_DB_PATH))
