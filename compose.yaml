@@ -1,0 +1,41 @@
+# AI Radar on the Ubuntu host (D11); see docs/deployment.md.
+
+# A fixed project name keeps the data volume independent of the directory name.
+name: ai-radar
+
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Overrides a value from .env, so the database always lands on the volume.
+      AI_RADAR_DB: /data/ai-radar.db
+    # Reachable only inside the Compose network; no published port.
+    expose:
+      - "8000"
+    volumes:
+      - ai-radar-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    # Bound to the loopback interface only (D9).
+    ports:
+      - "127.0.0.1:8080:80"
+
+volumes:
+  ai-radar-data:

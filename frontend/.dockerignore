@@ -1,0 +1,12 @@
+.env
+.env.*
+.envrc
+*.pem
+*.key
+.claude/
+.git/
+node_modules/
+dist/
+coverage/
+Dockerfile
+.dockerignore
