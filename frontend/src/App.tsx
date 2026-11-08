@@ -5,6 +5,7 @@ import { RefreshProvider } from "./refresh/RefreshContext";
 import { AppShell } from "./shell/AppShell";
 import { useHashRoute } from "./shell/navigation";
 import { Sources } from "./sources/Sources";
+import { NewsWall } from "./wall/NewsWall";
 
 export function App() {
   return (
@@ -20,7 +21,11 @@ function Shell() {
   const route = useHashRoute();
   const { t } = useLanguage();
 
-  // The News Wall follows in its own issue (#29).
+  // A separate full-screen mode, not the dashboard without its sidebar.
+  if (route === "news-wall") {
+    return <NewsWall />;
+  }
+
   return (
     <AppShell current={route}>
       {route === "overview" ? (

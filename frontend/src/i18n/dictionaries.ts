@@ -209,6 +209,17 @@ const en = {
     resetDone: "Learned preferences have been reset.",
     resetError: "Learned preferences could not be reset.",
   },
+  wall: {
+    settings: "Wall settings",
+    close: "Close",
+    exit: "Exit News Wall",
+    loading: "Loading news…",
+    error: "News could not be loaded. Trying again automatically.",
+    stale: "Update failed. Showing data from {time}.",
+    emptyTitle: "No articles to show",
+    emptyText: "No analyzed article reaches the minimum relevance of {score}.",
+    highlight: "New & relevant",
+  },
 } as const;
 
 type Texts<T> = { readonly [K in keyof T]: T[K] extends string ? string : Texts<T[K]> };
@@ -415,6 +426,17 @@ const de: Dictionary = {
     resetting: "Wird zurückgesetzt …",
     resetDone: "Die gelernten Präferenzen wurden zurückgesetzt.",
     resetError: "Die gelernten Präferenzen konnten nicht zurückgesetzt werden.",
+  },
+  wall: {
+    settings: "Wall-Einstellungen",
+    close: "Schließen",
+    exit: "News-Wall verlassen",
+    loading: "Nachrichten werden geladen …",
+    error: "Die Nachrichten konnten nicht geladen werden. Neuer Versuch erfolgt automatisch.",
+    stale: "Aktualisierung fehlgeschlagen. Angezeigt wird der Stand von {time}.",
+    emptyTitle: "Keine Artikel anzuzeigen",
+    emptyText: "Kein analysierter Artikel erreicht die Mindest-Relevanz von {score}.",
+    highlight: "Neu & relevant",
   },
 };
 

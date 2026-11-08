@@ -1,0 +1,281 @@
+/* News Wall (docs/frontend-design.md, section 5): a full-screen presentation
+   mode, readable from a distance. Colors come from the design tokens. */
+
+.wall {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  height: 100vh;
+  height: 100dvh;
+  padding: var(--space-5);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.wall__stage {
+  min-height: 0;
+}
+
+.wall__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--space-4);
+  height: 100%;
+  animation: wall-page-in calc(var(--duration-fast) * 3) ease-out;
+}
+
+@keyframes wall-page-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.wall__message {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.25rem, 2vw, 2rem);
+  color: var(--color-text-secondary);
+}
+
+.wall__message h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--color-text-primary);
+}
+
+.wall__message p {
+  margin: 0;
+}
+
+.wall__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 1.5em;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.wall-card {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  padding: var(--space-4);
+  overflow: hidden;
+  overflow-wrap: anywhere; /* feeds can send very long unbroken tokens */
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.wall-card--lead {
+  grid-column: span 6;
+  grid-row: span 2;
+  padding: var(--space-5);
+}
+
+.wall-card--lead:only-child {
+  grid-column: 1 / -1;
+}
+
+.wall-card--highlighted {
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
+}
+
+.wall-card__meta {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: clamp(0.75rem, 0.8vw, 1rem);
+  color: var(--color-text-secondary);
+}
+
+.wall-card__badge {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-weight: var(--font-weight-semibold);
+}
+
+.wall-card__title {
+  display: -webkit-box;
+  flex: none;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  font-size: clamp(1.1rem, 1.5vw, 1.75rem);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+}
+
+.wall-card--lead .wall-card__title {
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  font-size: clamp(1.6rem, 3vw, 3.25rem);
+}
+
+/* Takes the height left in the card and shows only as many whole lines as
+   fit in it, so no text is cut through the middle of a line. */
+.wall-card__summary {
+  flex: 1 1 0;
+  min-height: 0;
+  container-type: size;
+  font-size: clamp(0.9rem, 1vw, 1.25rem);
+  color: var(--color-text-secondary);
+}
+
+.wall-card__summary p {
+  max-height: round(down, 100cqh, 1lh);
+  margin: 0;
+  overflow: hidden;
+}
+
+.wall-card--lead .wall-card__summary {
+  font-size: clamp(1.1rem, 1.5vw, 1.75rem);
+}
+
+.wall-card__scores {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: clamp(0.75rem, 0.8vw, 1rem);
+}
+
+.wall-card__scores div {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.wall-card__scores dt {
+  color: var(--color-text-secondary);
+}
+
+.wall-card__scores dd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.wall-card__basis {
+  flex: none;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Invisible until reached by keyboard: no controls in normal operation. */
+.wall__trigger {
+  position: absolute;
+  right: var(--space-5);
+  bottom: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  opacity: 0;
+}
+
+.wall__trigger:focus-visible {
+  opacity: 1;
+}
+
+.wall-settings {
+  position: absolute;
+  right: var(--space-5);
+  bottom: var(--space-6);
+  display: grid;
+  gap: var(--space-2);
+  min-width: 260px;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.wall-settings select,
+.wall-settings button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-interactive);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.wall-settings__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.wall-settings a {
+  color: var(--color-text-primary);
+}
+
+/* Short displays: keep the supporting cards complete by giving up space. */
+@media (max-height: 800px) {
+  .wall-card {
+    gap: var(--space-1);
+    padding: var(--space-3);
+  }
+
+  .wall-card:not(.wall-card--lead) .wall-card__title {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+}
+
+/* Small screens: stack and scroll instead of squeezing nine cards. */
+@media (max-width: 900px) {
+  .wall {
+    height: auto;
+    min-height: 100dvh;
+    padding: var(--space-4);
+    overflow: visible;
+  }
+
+  .wall__grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+    height: auto;
+  }
+
+  .wall-card,
+  .wall-card--lead,
+  .wall-card--lead:only-child {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .wall-card__summary {
+    flex: none;
+    container-type: normal;
+  }
+
+  .wall-card__summary p {
+    max-height: none;
+  }
+
+  .wall__message {
+    min-height: 60vh;
+  }
+}

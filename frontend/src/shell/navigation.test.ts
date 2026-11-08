@@ -23,11 +23,12 @@ describe("routeFromHash", () => {
     expect(routeFromHash("#/overview", none)).toBeNull();
   });
 
-  it("makes Overview, Interests, and Sources available so far", () => {
+  it("makes Overview, Interests, Sources, and News Wall available", () => {
     expect(NAV_ITEMS.filter((item) => item.available).map((item) => item.id)).toEqual([
       "overview",
       "interests",
       "sources",
+      "news-wall",
     ]);
     expect(routeFromHash("", NAV_ITEMS)).toBe("overview");
   });

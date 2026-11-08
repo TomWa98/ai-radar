@@ -40,7 +40,7 @@ describe("App shell", () => {
     await screen.findByText("Backend reachable");
   });
 
-  it("links Overview, Interests, and Sources, disables News Wall, and hides Articles", async () => {
+  it("links all available destinations and hides Articles", async () => {
     stubApi();
     render(<App />);
     const nav = screen.getByRole("navigation", { name: "Main navigation" });
@@ -52,11 +52,25 @@ describe("App shell", () => {
     expect(interests.getAttribute("href")).toBe("#/interests");
     const sources = within(nav).getByRole("link", { name: "Sources" });
     expect(sources.getAttribute("href")).toBe("#/sources");
-    const wall = within(nav).getByText("News Wall").closest("[aria-disabled]");
-    expect(wall?.getAttribute("aria-disabled")).toBe("true");
-    expect(within(nav).getAllByRole("link")).toHaveLength(3);
+    const wall = within(nav).getByRole("link", { name: "News Wall" });
+    expect(wall.getAttribute("href")).toBe("#/news-wall");
+    expect(within(nav).getAllByRole("link")).toHaveLength(4);
     expect(within(nav).queryByText("Articles")).toBeNull();
     await screen.findByText("Backend reachable");
+  });
+});
+
+describe("News Wall route", () => {
+  it("replaces the dashboard shell at #/news-wall", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    window.location.hash = "#/news-wall";
+    stubApi();
+    render(<App />);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("News Wall");
+    expect(screen.queryByRole("navigation")).toBeNull();
+    expect(screen.queryByRole("banner")).toBeNull();
+    expect(await screen.findByText("No articles to show")).toBeTruthy();
   });
 });
 
