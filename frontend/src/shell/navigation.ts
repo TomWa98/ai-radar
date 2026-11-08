@@ -18,7 +18,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "overview", labelKey: "overview", available: true },
   { id: "interests", labelKey: "interests", available: true },
   { id: "sources", labelKey: "sources", available: true },
-  { id: "news-wall", labelKey: "newsWall", available: false },
+  { id: "news-wall", labelKey: "newsWall", available: true },
 ];
 
 export function hrefFor(id: RouteId): string {

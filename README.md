@@ -11,9 +11,9 @@
 - **Backend (FastAPI, SQLite):** Feed-Verwaltung, Abruf alle 15 Minuten und manuell (`/api/refresh`, CLI), Deduplizierung, optionaler Volltext (`trafilatura`) mit SSRF-Schutz.
 - **Analyse:** Zusammenfassung, Kategorie, Bedeutung und persönliche Relevanz mit Begründung (DE/EN). Standard ist der kostenlose FakeAnalyzer; OpenAI ist optional und budgetbegrenzt.
 - **Suche und Personalisierung:** Volltextsuche (FTS5) und Filter, manuelle Interessen, Relevanzfeedback und daraus gelernte Präferenzen.
-- **Frontend (React, TypeScript, Vite):** Übersicht (Editorial Grid mit Suche, Filtern, Sortierung, Feedback, Aktualisierung), Interessen & Personalisierung, Quellen (Feeds verwalten, Abruf manuell starten, letzter Abruf und Fehler je Feed), DE/EN-Umschaltung.
+- **Frontend (React, TypeScript, Vite):** Übersicht (Editorial Grid mit Suche, Filtern, Sortierung, Feedback, Aktualisierung), Interessen & Personalisierung, Quellen (Feeds verwalten, Abruf manuell starten, letzter Abruf und Fehler je Feed), News-Wall für Vollbild und Dauerbetrieb (`#/news-wall`), DE/EN-Umschaltung.
 
-**Offen:** News-Wall (#29), Docker-Compose-Betrieb, Zugriff aus dem LAN.
+**Offen:** Docker-Compose-Betrieb, Zugriff aus dem LAN.
 
 ## Lokal starten
 
