@@ -33,6 +33,10 @@ Der Vite-Dev-Server leitet `/api` und `/health` an das Backend weiter. Feeds wer
 
 ## Konfiguration
 
+Für die lokale Einrichtung im Repo-Root `cp .env.example .env` ausführen und die Werte anpassen. Das Backend liest die `.env` beim Start, unabhängig vom Arbeitsverzeichnis; sie wird nicht eingecheckt, und ohne sie gelten die Standardwerte.
+
+Bereits gesetzte Umgebungsvariablen haben Vorrang vor der `.env`. Um eine Shell-Variable für die aktuelle Sitzung zu entfernen, zum Beispiel `unset OPENAI_API_KEY` ausführen.
+
 | Variable | Standard | Bedeutung |
 |---|---|---|
 | `AI_RADAR_DB` | `ai-radar.db` | SQLite-Datei (relativ zum Arbeitsverzeichnis); Schema wird beim Start angelegt |
@@ -41,7 +45,7 @@ Der Vite-Dev-Server leitet `/api` und `/health` an das Backend weiter. Feeds wer
 | `AI_RADAR_ANALYSIS_CONCURRENCY` | `2` | gleichzeitige Analysen |
 | `AI_RADAR_ANALYSIS_MAX_ATTEMPTS` | `3` | Versuche je Artikel |
 
-**OpenAI (kostenpflichtig):** `AI_RADAR_ANALYZER=openai` erfordert `OPENAI_API_KEY`, `AI_RADAR_OPENAI_MODEL`, `AI_RADAR_OPENAI_INPUT_PRICE_PER_MTOK`, `AI_RADAR_OPENAI_OUTPUT_PRICE_PER_MTOK` und ein `AI_RADAR_MONTHLY_BUDGET` > 0. Token und Kosten werden je Aufruf gespeichert; bei erreichtem Budget stoppen die Aufrufe. Schlüssel nur in der Umgebung setzen, nie einchecken.
+**OpenAI (kostenpflichtig):** `AI_RADAR_ANALYZER=openai` erfordert `OPENAI_API_KEY`, `AI_RADAR_OPENAI_MODEL`, `AI_RADAR_OPENAI_INPUT_PRICE_PER_MTOK`, `AI_RADAR_OPENAI_OUTPUT_PRICE_PER_MTOK` und ein `AI_RADAR_MONTHLY_BUDGET` > 0. Token und Kosten werden je Aufruf gespeichert; bei erreichtem Budget stoppen die Aufrufe. Die Preise sind konfigurierbare Schätzwerte und werden nicht automatisch aktualisiert. Schlüssel nur in der `.env` oder der Umgebung setzen, nie einchecken.
 
 ## Sicherheit
 

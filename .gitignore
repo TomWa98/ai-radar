@@ -9,6 +9,9 @@ __pycache__/
 .env
 .env.*
 !.env.example
+.envrc
+*.pem
+*.key
 
 # Local databases
 *.db
